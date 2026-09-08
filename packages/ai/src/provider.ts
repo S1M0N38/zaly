@@ -44,6 +44,13 @@ export interface StreamOptions {
    *  Useful as a debugging kill-switch or when a caller wants strict
    *  per-token billing. */
   caching?: boolean
+  /** Stable conversation identifier. Adapters forward it to providers
+   *  that route or cache by session — currently sent as
+   *  `x-opencode-session` on every request (OpenCode Go requires it;
+   *  other providers ignore unknown headers). Set by the agent from
+   *  its session id; stable across turns and resumes of the same
+   *  conversation. */
+  sessionId?: string
 }
 
 /** What a `Provider` adapter receives. Internal — assembled by

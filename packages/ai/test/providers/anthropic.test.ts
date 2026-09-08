@@ -1056,6 +1056,48 @@ describe("anthropic: collect integration", () => {
   })
 })
 
+// ── Session headers ──────────────────────────────────────────────────────
+// OpenCode Go requires `x-opencode-session` (plus a client user agent)
+// on every request, including its Anthropic-endpoint models. Tmp fix:
+// always send when the caller provides a session id.
+
+describe("anthropic: session headers", () => {
+  test("sends x-opencode-session and zaly user agent when sessionId is set", async () => {
+    const { fetch, recorded } = recordFetch(sseResponse(basicStream()))
+    const provider = createAnthropic({ apiKey: "test", fetch })
+    await drain(
+      provider.stream(
+        streamReq({
+          messages: [{ content: "hi", role: "user" }],
+          model: "claude-sonnet-4-5",
+          sessionId: "ses_123",
+        })
+      )
+    )
+
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].headers["x-opencode-session"]).toBe("ses_123")
+    expect(recorded[0].headers["user-agent"]).toMatch(/^zaly \(/)
+  })
+
+  test("omits x-opencode-session when no sessionId is set", async () => {
+    const { fetch, recorded } = recordFetch(sseResponse(basicStream()))
+    const provider = createAnthropic({ apiKey: "test", fetch })
+    await drain(
+      provider.stream(
+        streamReq({
+          messages: [{ content: "hi", role: "user" }],
+          model: "claude-sonnet-4-5",
+        })
+      )
+    )
+
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].headers["x-opencode-session"]).toBeUndefined()
+    expect(recorded[0].headers["user-agent"]).toMatch(/^zaly \(/)
+  })
+})
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 async function drain<T>(stream: AsyncIterable<T>): Promise<T[]> {

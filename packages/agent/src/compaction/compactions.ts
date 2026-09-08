@@ -118,6 +118,7 @@ export class Compaction {
         caching: false,
         maxTokens: this.#opts.summaryTokens,
         reasoning: this.#opts.reasoning ? { effort: this.#opts.reasoning } : undefined,
+        sessionId: this.#agent.session.id,
         signal: this.#opts.signal,
       }
     )

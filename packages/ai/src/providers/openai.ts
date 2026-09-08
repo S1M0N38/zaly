@@ -21,6 +21,7 @@ import type {
 
 import { safeStringify } from "@zaly/shared"
 import { resolveApiKey } from "../auth/manager.ts"
+import { zalyUserAgent } from "../auth/oauth/utils.ts"
 import {
   attachmentToMeta,
   compressImages,
@@ -104,7 +105,9 @@ export function createOpenAI(config: ProviderOptions = {}): Provider<"openai"> {
         body: safeStringify(body),
         headers: {
           "Content-Type": "application/json",
+          "User-Agent": zalyUserAgent,
           ...auth(),
+          ...(req.opts.sessionId ? { "x-opencode-session": req.opts.sessionId } : {}),
           ...apiKey?.headers,
           ...config.headers,
         },

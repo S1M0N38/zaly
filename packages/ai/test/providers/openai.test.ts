@@ -837,6 +837,48 @@ describe("openai: collect integration", () => {
   })
 })
 
+// ── Session headers ──────────────────────────────────────────────────────
+// OpenCode Go requires `x-opencode-session` (plus a client user agent)
+// on every request. Tmp fix: always send when the caller provides a
+// session id; unknown headers are ignored by other providers.
+
+describe("openai: session headers", () => {
+  test("sends x-opencode-session and zaly user agent when sessionId is set", async () => {
+    const { fetch, recorded } = recordFetch(sseResponse([finishChunk()]))
+    const provider = createOpenAI({ apiKey: "test", fetch })
+    await drain(
+      provider.stream(
+        streamReq({
+          messages: [{ content: "hi", role: "user" }],
+          model: "gpt-4o-mini",
+          sessionId: "ses_123",
+        })
+      )
+    )
+
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].headers["x-opencode-session"]).toBe("ses_123")
+    expect(recorded[0].headers["user-agent"]).toMatch(/^zaly \(/)
+  })
+
+  test("omits x-opencode-session when no sessionId is set", async () => {
+    const { fetch, recorded } = recordFetch(sseResponse([finishChunk()]))
+    const provider = createOpenAI({ apiKey: "test", fetch })
+    await drain(
+      provider.stream(
+        streamReq({
+          messages: [{ content: "hi", role: "user" }],
+          model: "gpt-4o-mini",
+        })
+      )
+    )
+
+    expect(recorded).toHaveLength(1)
+    expect(recorded[0].headers["x-opencode-session"]).toBeUndefined()
+    expect(recorded[0].headers["user-agent"]).toMatch(/^zaly \(/)
+  })
+})
+
 // ── helpers ──────────────────────────────────────────────────────────────
 
 async function drain<T>(stream: AsyncIterable<T>): Promise<T[]> {

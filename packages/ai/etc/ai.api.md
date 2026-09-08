@@ -712,6 +712,7 @@ export interface StreamOptions {
     reasoning?: ReasoningOptions;
     // (undocumented)
     responseFormat?: ResponseFormat;
+    sessionId?: string;
     signal?: AbortSignal;
     // (undocumented)
     stopSequences?: string[];

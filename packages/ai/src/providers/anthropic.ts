@@ -12,6 +12,7 @@ import type { Content, ImagePart, Message, PdfPart, ProviderOptions, Tool } from
 
 import { safeStringify } from "@zaly/shared"
 import { resolveApiKey } from "../auth/manager.ts"
+import { zalyUserAgent } from "../auth/oauth/utils.ts"
 import {
   attachmentToMeta,
   compressImages,
@@ -101,8 +102,10 @@ export function createAnthropic(config: ProviderOptions = {}): Provider<"anthrop
         body: safeStringify(body),
         headers: {
           "Content-Type": "application/json",
+          "User-Agent": zalyUserAgent,
           "anthropic-version": "2023-06-01",
           ...auth(),
+          ...(req.opts.sessionId ? { "x-opencode-session": req.opts.sessionId } : {}),
           ...apiKey?.headers,
           ...config.headers,
         },
