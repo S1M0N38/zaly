@@ -161,7 +161,7 @@ interface ResponsesFunctionCallItem {
 interface ResponsesFunctionCallOutputItem {
   type: "function_call_output"
   call_id: string
-  output: string
+  output: string | ResponsesContentBlock[]
 }
 
 interface ResponsesReasoningItem {
@@ -376,17 +376,14 @@ async function toResponsesInputItems(msg: Message): Promise<ResponsesInputItem[]
       return await toAssistantItems(msg)
     }
     case "tool": {
-      // One function_call_output per result. Output is the stringified
-      // content; the Responses API doesn't accept image/file blocks in
-      // tool outputs, so non-text content collapses to a placeholder
-      // marker (matching how chat-completions tool results behave).
+      // Responses supports text, image, and file blocks in function outputs.
       const out: ResponsesInputItem[] = []
       for (const part of msg.content) {
         // eslint-disable-next-line no-await-in-loop
-        const text = await toolResultText(part.content)
+        const output = await toToolOutput(part.content, part.isError === true)
         out.push({
           call_id: part.id,
-          output: part.isError === true ? `ERROR: ${text}` : text,
+          output,
           type: "function_call_output",
         })
       }
@@ -399,17 +396,18 @@ async function toResponsesInputItems(msg: Message): Promise<ResponsesInputItem[]
   }
 }
 
-async function toolResultText(content: Content): Promise<string> {
-  if (typeof content === "string") return content
-  const transformed = await transformResponses(content)
-  const chunks: string[] = []
-  let attachmentSeen = false
-  for (const p of transformed) {
-    if (p.type === "text") chunks.push(p.text)
-    else attachmentSeen = true
+async function toToolOutput(
+  content: Content,
+  isError: boolean
+): Promise<string | ResponsesContentBlock[]> {
+  if (typeof content === "string") return isError ? `ERROR: ${content}` : content
+  const blocks = await toUserContent(content)
+  if (blocks.every((block) => block.type === "input_text")) {
+    const text = blocks.map((block) => block.text).join("\n")
+    return isError ? `ERROR: ${text}` : text
   }
-  const body = chunks.join("\n")
-  return attachmentSeen ? `${body}\n[attachments omitted; tool outputs are text-only]` : body
+  if (isError) blocks.unshift({ text: "ERROR:", type: "input_text" })
+  return blocks
 }
 
 async function toAssistantItems(msg: Message<"assistant">): Promise<ResponsesInputItem[]> {
