@@ -23,6 +23,40 @@ async function toolOutput(content: Content, isError = false) {
   return (recorded[0].body as { input: unknown[] }).input
 }
 
+async function cachedRequest(opts: { caching?: boolean; codex?: boolean } = {}) {
+  const { fetch, recorded } = recordFetch(sseResponse([]))
+  const provider = createOpenAIResponses({ apiKey: "test", fetch })
+  const req = streamReq({
+    caching: opts.caching,
+    messages: [{ content: "hello", role: "user" }],
+    model: "test",
+  })
+  ;(req.ctx as { cacheKey?: string }).cacheKey = "session-123"
+  if (opts.codex) req.model.provider.id = "openai-codex"
+  for await (const _ of provider.stream(req)) {
+    // Drain the stream to capture the serialized request.
+  }
+  return recorded[0]
+}
+
+test("Responses sends a stable prompt cache key", async () => {
+  const request = await cachedRequest()
+  expect(request.body).toMatchObject({ prompt_cache_key: "session-123" })
+  expect(request.headers["session-id"]).toBeUndefined()
+})
+
+test("Codex sends its cache key as the Responses session header", async () => {
+  const request = await cachedRequest({ codex: true })
+  expect(request.body).toMatchObject({ prompt_cache_key: "session-123" })
+  expect(request.headers["session-id"]).toBe("session-123")
+})
+
+test("Responses omits cache affinity when caching is disabled", async () => {
+  const request = await cachedRequest({ caching: false, codex: true })
+  expect(request.body).not.toHaveProperty("prompt_cache_key")
+  expect(request.headers["session-id"]).toBeUndefined()
+})
+
 test("Responses tool results retain image and PDF attachments", async () => {
   expect(
     await toolOutput([

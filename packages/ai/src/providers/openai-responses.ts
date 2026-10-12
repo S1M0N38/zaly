@@ -94,6 +94,9 @@ export function createOpenAIResponses(config: ProviderOptions = {}): Provider<"o
           ...auth(),
           ...apiKey?.headers,
           ...config.headers,
+          ...(req.model.provider.id === "openai-codex" && body.prompt_cache_key
+            ? { "session-id": body.prompt_cache_key }
+            : {}),
         },
         method: "POST",
         signal: req.opts.signal,
@@ -123,6 +126,7 @@ interface ResponsesRequest {
   }
   include?: string[]
   store?: boolean
+  prompt_cache_key?: string
   stream: true
 }
 
@@ -200,6 +204,7 @@ async function buildRequest(req: ProviderRequest): Promise<ResponsesRequest> {
   const out: ResponsesRequest = {
     input,
     model: model.model,
+    ...(opts.caching !== false && ctx.cacheKey ? { prompt_cache_key: ctx.cacheKey } : {}),
     stream: true,
   }
 

@@ -449,6 +449,7 @@ export class Agent extends Emitter<AgentEvents> {
   async #collect() {
     this.#abortController = new AbortController()
     const context = {
+      cacheKey: this.ctx.session.id,
       messages: [...this.ctx.messages],
       prompt: this.prompt,
       tools: this.tools,
