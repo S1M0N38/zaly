@@ -19,7 +19,7 @@ jobs:
           bun-version: "1.4.3"
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.11.0"
+          node-version: "22.18.0"
       - run: bun --workspaces install --frozen-lockfile
       - run: bun install --frozen-lockfile --lockfile-only
         shell: bash

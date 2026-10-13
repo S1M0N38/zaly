@@ -68,7 +68,7 @@
   },
   "engines": {
     "bun": ">=1.2",
-    "node": ">=22.11"
+    "node": ">=22.18.0"
   },
   "inlinedDependencies": {
     "ignore": "7.0.12",

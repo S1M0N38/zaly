@@ -190,7 +190,7 @@
   },
   "engines": {
     "bun": ">=1.2",
-    "node": ">=22.11"
+    "node": ">=22.18.0"
   },
   "inlinedDependencies": {
     "ansi-regex": "6.4.0",
