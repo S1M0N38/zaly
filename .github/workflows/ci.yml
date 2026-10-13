@@ -64,7 +64,9 @@ jobs:
     concurrency:
       group: release-please
       cancel-in-progress: false
-    if: ${{ !failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    # TEMP: restore the main-push condition after the trusted-publisher bootstrap.
+    # if: ${{ !failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -95,8 +97,11 @@ jobs:
             }
 
   publish:
-    needs: [build, release]
-    if: needs.release.outputs.releases_created == 'true'
+    # TEMP: restore release dependency and gate after the bootstrap publish.
+    # needs: [build, release]
+    # if: needs.release.outputs.releases_created == 'true'
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write

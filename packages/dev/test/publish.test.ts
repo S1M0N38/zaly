@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "pathe"
+import { join, relative } from "pathe"
 import { afterEach, expect, test } from "vitest"
 import { isMissingVersion } from "../src/publish.ts"
 import { workspace } from "../src/utils.ts"
@@ -11,7 +11,7 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { force: true, recursive: true })
 })
 
-function fixture(fail = false, dryRun = false) {
+function fixture(fail = false, dryRun = false, relativeDirectory = false) {
   const dir = mkdtempSync(join(tmpdir(), "zaly-publish-test-"))
   dirs.push(dir)
   const log = join(dir, "commands")
@@ -48,9 +48,10 @@ fi
     "bun",
     [
       "-e",
-      `import { publishArtifacts } from ${JSON.stringify(join(workspace, "packages/dev/src/publish.ts"))}; await publishArtifacts(${JSON.stringify(dir)}, { root: ${JSON.stringify(dir)}, dryRun: ${dryRun} });`,
+      `import { publishArtifacts } from ${JSON.stringify(join(workspace, "packages/dev/src/publish.ts"))}; await publishArtifacts(${JSON.stringify(relativeDirectory ? relative(tmpdir(), dir) : dir)}, { root: ${JSON.stringify(dir)}, dryRun: ${dryRun} });`,
     ],
     {
+      cwd: tmpdir(),
       encoding: "utf8",
       env: {
         ...process.env,
@@ -61,7 +62,7 @@ fi
       timeout: 15_000,
     }
   )
-  return { ...result, commands: readFileSync(log, "utf8").trim().split("\n") }
+  return { ...result, dir, commands: readFileSync(log, "utf8").trim().split("\n") }
 }
 
 test("publication preflights every package and skips published versions", () => {
@@ -71,6 +72,13 @@ test("publication preflights every package and skips published versions", () => 
   expect(result.commands.slice(3)).toHaveLength(2)
   expect(result.commands[3]).toContain("first.tgz --access public")
   expect(result.commands[4]).toContain("second.tgz --access public")
+})
+
+test("relative artifact directories produce absolute npm file arguments", () => {
+  const result = fixture(false, false, true)
+  expect(result.status).toBe(0)
+  expect(result.commands[3]).toBe(`publish ${join(result.dir, "first.tgz")} --access public`)
+  expect(result.commands[4]).toBe(`publish ${join(result.dir, "second.tgz")} --access public`)
 })
 
 test("registry failures stop publication before any package is published", () => {

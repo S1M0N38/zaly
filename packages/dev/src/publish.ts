@@ -3,7 +3,7 @@ import type { Pkg } from "./utils.ts"
 
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "pathe"
+import { join, resolve } from "pathe"
 import { readManifest } from "./manifest.ts"
 import { packRelease } from "./pack.ts"
 import { exec, run } from "./utils.ts"
@@ -45,6 +45,7 @@ export function publishArgs(opts: PublishOptions, tarball: string): string[] {
 }
 
 export async function publishArtifacts(dir: string, opts: PublishOptions): Promise<void> {
+  dir = resolve(dir)
   const manifest = readManifest(dir)
   const pending = []
   // Resolve every registry lookup before publishing any package.
