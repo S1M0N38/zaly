@@ -125,6 +125,16 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "imports": {
+      "#ansi": {
+        "bun": "./dist/ansi.bun.mjs",
+        "default": "./dist/ansi.node.mjs"
+      },
+      "#glob": {
+        "bun": "./dist/glob.bun.mjs",
+        "default": "./dist/glob.node.mjs"
+      }
+    },
     "exports": {
       ".": "./dist/index.mjs",
       "./ansi": "./dist/ansi.mjs",
