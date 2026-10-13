@@ -12,11 +12,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.11.0"
       - run: bun --workspaces install --frozen-lockfile
       - run: bun install --frozen-lockfile --lockfile-only
       - name: Download latest actionlint
@@ -33,7 +36,6 @@ jobs:
       - run: bun z build
       - run: bun z test --bun
       - name: Check generated artifacts
-        if: github.event_name == 'pull_request'
         run: |
           if ! git diff --quiet; then
             git status --short
@@ -41,13 +43,22 @@ jobs:
             echo "::error::Generated artifacts changed. Run 'bun z build' and commit the result."
             exit 1
           fi
-      - uses: stefanzweifel/git-auto-commit-action@v7
+      - run: bun z pack --out release-artifacts
+      - name: Smoke-test packed packages
+        run: RELEASE_ARTIFACTS="$PWD/release-artifacts" bun z test packages/dev/test/release.integration.test.ts
+      - uses: actions/upload-artifact@v4
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          commit_message: "chore: update generated artifacts"
+          name: packed-release
+          path: release-artifacts/
+          if-no-files-found: error
+          retention-days: 30
 
   release:
     needs: build
+    concurrency:
+      group: release-please
+      cancel-in-progress: false
     if: ${{ !failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
@@ -57,9 +68,58 @@ jobs:
     outputs:
       releases_created: ${{ steps.release-please.outputs.releases_created }}
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: automation-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
       - uses: googleapis/release-please-action@v4
         id: release-please
         with:
+          token: ${{ steps.automation-token.outputs.token }}
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
           target-branch: main
+      - name: Check tags match the verified commit
+        if: steps.release-please.outputs.releases_created == 'true'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_OUTPUTS: ${{ toJSON(steps.release-please.outputs) }}
+          VERIFIED_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const outputs = JSON.parse(process.env.RELEASE_OUTPUTS);
+            const paths = JSON.parse(outputs.paths_released);
+            if (!paths.length || paths.some(path => outputs[`${path}--sha`] !== process.env.VERIFIED_SHA)) {
+              throw new Error('Release tags differ from the verified commit; use manual recovery');
+            }
+
+  publish:
+    needs: [build, release]
+    if: needs.release.outputs.releases_created == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: npm
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          registry-url: https://registry.npmjs.org
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: packed-release
+          path: release-artifacts
+      - run: bun z publish --artifacts release-artifacts --provenance
