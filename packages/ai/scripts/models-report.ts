@@ -3,7 +3,8 @@ import type { ModelCatalog } from "../src/models/catalog.ts"
 import { formatSize } from "@zaly/shared"
 import { isDeepStrictEqual } from "node:util"
 
-type Change = { id: string; fields: string[] }
+type FieldChange = { path: string; before: unknown; after: unknown }
+type Change = { id: string; fields: FieldChange[] }
 const MAX_ROWS = 80
 
 function code(value: string): string {
@@ -19,11 +20,11 @@ function code(value: string): string {
 
 function display(value: unknown): string {
   if (value === undefined) return "—"
-  const text = JSON.stringify(value)
+  const text = typeof value === "string" ? value : JSON.stringify(value)
   return code(text.length > 100 ? `${text.slice(0, 97)}…` : text)
 }
 
-function fields(left: unknown, right: unknown, path = ""): string[] {
+function fields(left: unknown, right: unknown, path = ""): FieldChange[] {
   if (isDeepStrictEqual(left, right)) return []
   if (
     left &&
@@ -39,7 +40,7 @@ function fields(left: unknown, right: unknown, path = ""): string[] {
       .toSorted()
       .flatMap((key) => fields(l[key], r[key], path ? `${path}.${key}` : key))
   }
-  return [`${code(path)}: ${display(left)} → ${display(right)}`]
+  return [{ path, before: left, after: right }]
 }
 
 function models(catalog: ModelCatalog): Map<string, unknown> {
@@ -66,20 +67,20 @@ function diff(left: Map<string, unknown>, right: Map<string, unknown>) {
   return { added, changed, removed }
 }
 
-function details(title: string, rows: string[], table = false): string {
+function details(title: string, rows: string[], expanded = false): string {
   if (!rows.length) return ""
   const shown: string[] = []
   let size = 0
   for (const row of rows) {
     size += Buffer.byteLength(row)
-    if (shown.length >= MAX_ROWS || size > (table ? 14_000 : 3000)) break
+    if (shown.length >= MAX_ROWS || size > (expanded ? 14_000 : 3000)) break
     shown.push(row)
   }
   const extra =
     rows.length > shown.length
       ? `\n\n_${rows.length - shown.length} more entries omitted; see the catalog diff._`
       : ""
-  return `\n<details>\n<summary>${title} (${rows.length})</summary>\n\n${table ? "| Entry | Changes |\n|---|---|\n" : ""}${shown.join("\n")}${extra}\n\n</details>\n`
+  return `\n<details>\n<summary>${title} (${rows.length})</summary>\n\n${shown.join(expanded ? "\n\n" : "\n")}${extra}\n\n</details>\n`
 }
 
 function metadata(catalog: ModelCatalog): Map<string, unknown> {
@@ -92,11 +93,73 @@ function metadata(catalog: ModelCatalog): Map<string, unknown> {
   return ret
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  "cost.input": "Input cost / M tokens",
+  "cost.output": "Output cost / M tokens",
+  "cost.cache_read": "Cache read / M tokens",
+  "cost.cache_write": "Cache write / M tokens",
+  "cost.reasoning": "Reasoning cost / M tokens",
+  "limit.context": "Context limit",
+  "limit.input": "Input limit",
+  "limit.output": "Output limit",
+  "modalities.input": "Input modalities",
+  "modalities.output": "Output modalities",
+  reasoning: "Reasoning",
+  tool_call: "Tool calling",
+  structured_output: "Structured output",
+  attachment: "Attachments",
+  temperature: "Temperature support",
+  interleaved: "Interleaved reasoning",
+  open_weights: "Open weights",
+  name: "Name",
+  family: "Family",
+  canonical_model_id: "Canonical model ID",
+  knowledge: "Knowledge cutoff",
+  release_date: "Release date",
+  last_updated: "Last updated",
+  api: "API URL",
+  npm: "Adapter",
+  env: "Credential environment variables",
+}
+const FIELD_ORDER = new Map(Object.keys(FIELD_LABELS).map((path, index) => [path, index]))
+const CAPABILITIES = new Set([
+  "reasoning",
+  "tool_call",
+  "structured_output",
+  "attachment",
+  "temperature",
+  "interleaved",
+  "open_weights",
+])
+
+function priority(path: string): number {
+  if (path.startsWith("cost.")) return 0
+  if (path.startsWith("limit.")) return 1
+  if (path.startsWith("modalities.")) return 2
+  if (CAPABILITIES.has(path)) return 3
+  return 4
+}
+
 function changeRows(items: Change[]): string[] {
-  return items.map(
-    ({ id, fields: changes }) =>
-      `| ${code(id)} | ${changes.slice(0, 6).join("; ")}${changes.length > 6 ? `; +${changes.length - 6} other fields` : ""} |`
-  )
+  return items.map(({ id, fields: changes }) => {
+    const ordered = changes.toSorted(
+      (a, b) =>
+        priority(a.path) - priority(b.path) ||
+        (FIELD_ORDER.get(a.path) ?? FIELD_ORDER.size) -
+          (FIELD_ORDER.get(b.path) ?? FIELD_ORDER.size) ||
+        a.path.localeCompare(b.path)
+    )
+    return [
+      `### ${code(id)}`,
+      "",
+      "| Field | Before | After |",
+      "|---|---|---|",
+      ...ordered.map(
+        ({ path, before, after }) =>
+          `| ${FIELD_LABELS[path] ?? code(path)} | ${display(before)} | ${display(after)} |`
+      ),
+    ].join("\n")
+  })
 }
 
 export function catalogReport(
@@ -143,7 +206,7 @@ export function catalogReport(
     "| Adapter | Providers | Supported providers |",
     "|---|---:|---:|",
     ...[...adapters]
-      .toSorted(([a], [b]) => a.localeCompare(b))
+      .toSorted(([a, left], [b, right]) => right.total - left.total || a.localeCompare(b))
       .slice(0, MAX_ROWS)
       .map(([adapter, counts]) => `| ${code(adapter)} | ${counts.total} | ${counts.supported} |`),
     "",
