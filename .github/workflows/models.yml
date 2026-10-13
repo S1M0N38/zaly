@@ -6,16 +6,39 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: models-catalog-pr
+  cancel-in-progress: false
 
 jobs:
   models:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: automation-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
       - run: bun --workspaces install --frozen-lockfile
       - run: bun run models
-      - uses: stefanzweifel/git-auto-commit-action@v7
+      - uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore(models): update models.dev catalog"
+          token: ${{ steps.automation-token.outputs.token }}
+          branch: automation/models-catalog
+          delete-branch: true
+          add-paths: packages/ai/assets/models.json
+          commit-message: "chore(models): update models.dev catalog"
+          title: "chore(models): update models.dev catalog"
+          body: |
+            Updates the bundled models.dev snapshot. This PR is refreshed every 6 hours.
+
+            Review and squash-merge before a release when useful. Releases use
+            this checked-in snapshot; publishing never fetches a new catalog.
