@@ -5,6 +5,12 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish unpublished versions after verification (main only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -52,7 +58,7 @@ jobs:
       - name: Smoke-test packed packages
         run: RELEASE_ARTIFACTS="$PWD/release-artifacts" bun z test packages/dev/test/release.integration.test.ts
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
         with:
           name: packed-release
           path: release-artifacts/
@@ -64,9 +70,7 @@ jobs:
     concurrency:
       group: release-please
       cancel-in-progress: false
-    # TEMP: restore the main-push condition after the trusted-publisher bootstrap.
-    # if: ${{ !failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -97,11 +101,11 @@ jobs:
             }
 
   publish:
-    # TEMP: restore release dependency and gate after the bootstrap publish.
-    # needs: [build, release]
-    # if: needs.release.outputs.releases_created == 'true'
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, release]
+    if: >-
+      !cancelled() && needs.build.result == 'success' && github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.publish) ||
+       (github.event_name == 'push' && needs.release.result == 'success' && needs.release.outputs.releases_created == 'true'))
     permissions:
       contents: read
       id-token: write
