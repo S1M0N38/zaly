@@ -26,17 +26,14 @@ jobs:
         with:
           bun-version: "1.4.3"
       - run: bun --workspaces install --frozen-lockfile
-      - run: bun run models
+      - name: Update catalog and write review report
+        run: bun run models --report "$RUNNER_TEMP/models-report.md"
       - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
           branch: automation/models-catalog
           delete-branch: true
           add-paths: packages/ai/assets/models.json
-          commit-message: "chore(models): update models.dev catalog"
-          title: "chore(models): update models.dev catalog"
-          body: |
-            Updates the bundled models.dev snapshot. This PR is refreshed every 6 hours.
-
-            Review and squash-merge before a release when useful. Releases use
-            this checked-in snapshot; publishing never fetches a new catalog.
+          commit-message: "feat(models): update models.dev catalog"
+          title: "feat(models): update models.dev catalog"
+          body-path: ${{ runner.temp }}/models-report.md
