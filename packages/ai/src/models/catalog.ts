@@ -152,7 +152,7 @@ export async function downloadCatalog(dir: string): Promise<ModelCatalog> {
     throw new Error(`Invalid catalog format: expected object with "providers" key`)
   const cat = await ModelCatalog.load(data)
   const entries = Object.entries(cat.$).filter(([pid]) => !!cat.provider(pid))
-  const cleaned = JSON.stringify(Object.fromEntries(entries)) // strip unsupported providers
+  const cleaned = `${JSON.stringify(Object.fromEntries(entries), undefined, 2)}\n` // strip unsupported providers
   await writeFile(`${dir}/snapshot.json`, raw, "utf8")
   await writeFile(`${dir}/models.json`, cleaned, "utf8")
   return cat
