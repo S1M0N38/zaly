@@ -109,10 +109,13 @@ const main = defineCommand({
         description: "Lint with oxlint -f stylish (extra args passthrough)",
       },
       run: async ({ rawArgs }) => {
-        if (isAgent) {
-          await exec(["oxlint", ...rawArgs])
-        } else {
-          await exec(["oxlint", "-f", "stylish", ...rawArgs])
+        const workflows = rawArgs.filter((arg) => arg.startsWith(".github/workflows/"))
+        const sourceArgs = rawArgs.filter((arg) => !workflows.includes(arg))
+        if (process.cwd() === workspace && (rawArgs.length === 0 || workflows.length > 0)) {
+          await exec(["actionlint", ...workflows], workspace)
+        }
+        if (workflows.length === 0 || sourceArgs.length > 0) {
+          await exec(["oxlint", ...(isAgent ? [] : ["-f", "stylish"]), ...sourceArgs])
         }
       },
     }),

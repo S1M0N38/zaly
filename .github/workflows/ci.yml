@@ -19,6 +19,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun --workspaces install --frozen-lockfile
       - run: bun install --frozen-lockfile --lockfile-only
+      - name: Download latest actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+        shell: bash
       - run: bun z lint
       - name: Cache ttsc plugin binaries
         uses: actions/cache@v4
