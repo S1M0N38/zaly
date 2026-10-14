@@ -5,7 +5,8 @@ import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs
 import { tmpdir } from "node:os"
 import { join } from "pathe"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
-import { assertFresh, readTool } from "../src/tools/read.ts"
+import { readTool } from "../src/tools/read.ts"
+import { assertFresh } from "../src/utils/file.ts"
 
 type ReadResult = string | (TextPart | MetaPart)[]
 

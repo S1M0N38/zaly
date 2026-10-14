@@ -1,5 +1,5 @@
 import type { ToolContext } from "@zaly/ai"
-import type { FileMeta } from "./read.ts"
+import type { FileMeta } from "../utils/file.ts"
 
 import { AiError, defineTool } from "@zaly/ai"
 import { normPath, safeReadFile, safeStat } from "@zaly/shared"
@@ -7,7 +7,7 @@ import { detectEol, normalizeEol } from "@zaly/shared/text"
 import { mkdir, stat, writeFile } from "node:fs/promises"
 import { dirname } from "pathe"
 import { Type } from "typebox"
-import { assertFresh } from "./read.ts"
+import { assertFresh } from "../utils/file.ts"
 
 export type WriteTool = typeof writeTool
 

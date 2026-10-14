@@ -1,12 +1,12 @@
 import type { ToolContext } from "@zaly/ai"
-import type { FileMeta } from "./read.ts"
+import type { FileMeta } from "../utils/file.ts"
 
-import { defineTool, AiError } from "@zaly/ai"
+import { AiError, defineTool } from "@zaly/ai"
 import { normPath } from "@zaly/shared"
 import { detectEol, normalizeEol } from "@zaly/shared/text"
-import { readFile, writeFile, stat } from "node:fs/promises"
+import { readFile, stat, writeFile } from "node:fs/promises"
 import { Type } from "typebox"
-import { assertFresh } from "./read.ts"
+import { assertFresh } from "../utils/file.ts"
 
 export type EditTool = typeof editTool
 export type EditToolMeta = FileMeta & {

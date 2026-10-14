@@ -1,11 +1,13 @@
 import type { Content, ToolContext } from "@zaly/ai"
+import type { FileMeta } from "../utils/file.ts"
 
-import { AiError, defineTool, extractToolResults, toAttachment } from "@zaly/ai"
-import { normPath, safeStat } from "@zaly/shared"
+import { AiError, defineTool, toAttachment } from "@zaly/ai"
+import { normPath } from "@zaly/shared"
 import { fileDetect } from "@zaly/shared/detect"
 import { normalizeEol } from "@zaly/shared/text"
 import { stat } from "node:fs/promises"
 import { Type } from "typebox"
+import { isUnchanged } from "../utils/file.ts"
 
 /**
  * Read a file from disk.
@@ -27,31 +29,6 @@ const DEFAULT_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
 
 export type ReadTool = typeof readTool
-
-export type FileMeta = {
-  path: string
-  mtime: number
-  kind: "read" | "write" | "edit"
-  /** True when the result reflects the whole-file content — set by
-   *  un-sliced `read` and by `write` (which always replaces the
-   *  full file). Used by the masker to know whether this result
-   *  subsumes earlier reads of the same path. `edit` never sets it
-   *  because the result is patch-relative. */
-  full?: boolean
-  unchanged?: boolean
-}
-
-function isFileMeta(meta: unknown): meta is FileMeta {
-  const m = meta as Partial<Record<string, unknown>> | undefined | null
-  return (
-    m !== undefined &&
-    m !== null &&
-    typeof m === "object" &&
-    typeof m.path === "string" &&
-    typeof m.mtime === "number" &&
-    (m.kind === "read" || m.kind === "write" || m.kind === "edit")
-  )
-}
 
 export type ReadToolMeta = FileMeta & {
   offset: number
@@ -179,53 +156,6 @@ export const readTool = defineTool({
     return slice.content
   },
 })
-
-export function assertFresh(path: string, ctx: ToolContext) {
-  const err = checkFresh(path, ctx)
-  if (err !== true) throw err
-}
-
-export function isUnchanged(path: string, ctx: ToolContext) {
-  return checkFresh(path, ctx, { full: true }) === true
-}
-
-export function checkFresh(
-  path: string,
-  ctx: ToolContext,
-  opts: { full?: boolean } = {}
-): AiError | true {
-  path = normPath(ctx.cwd, path)
-  const mtime = safeStat(path)?.mtimeMs
-  if (mtime === undefined)
-    return new AiError({ code: "NOT_FOUND", message: `${path}: file not found` })
-  const messages = ctx.messages ?? []
-  let ret: AiError = freshnessError(path, "NOT_READ")
-
-  for (const { m, $p, p } of extractToolResults<FileMeta>(messages)) {
-    const id = m.id
-    if (!id || !isFileMeta(p.meta) || ctx.isMasked?.(id, $p)) continue
-    if (opts.full && !p.meta.full) continue
-    if (p.meta.mtime === mtime) return true // Fresh! The file's mtime matches what we saw at read time.
-    ret = freshnessError(path, "STALE")
-  }
-  return ret
-}
-
-/** Build the canonical "you need to read this first" error. Used by
- *  `write` (existing files only) and `edit` (always). The `code` is
- *  stable so the model can branch on it; the message tells the model
- *  what to do next; `data.reason` distinguishes never-read vs
- *  changed-since-read for downstream renderers. */
-export function freshnessError(path: string, reason: "NOT_READ" | "STALE"): AiError {
-  return new AiError({
-    code: "FILE_NOT_FRESH",
-    data: { path, reason },
-    message:
-      reason === "NOT_READ"
-        ? `${path}: read this file before mutating it.`
-        : `${path}: file changed since last read. Re-read before mutating.`,
-  })
-}
 
 /** Format a slice of file content as numbered lines plus, when the
  *  slice doesn't cover the whole file, a `<slice>` MetaPart with
