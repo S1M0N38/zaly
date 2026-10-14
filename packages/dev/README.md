@@ -23,6 +23,10 @@ bun z api
 From inside a package directory, `bun z ...` operates on that package where
 supported.
 
+## Guides
+
+- [Release and publishing workflow](./docs/releases.md)
+
 ## License
 
 MIT © Folke Lemaitre
