@@ -72,7 +72,7 @@
   },
   "inlinedDependencies": {
     "ignore": "7.0.12",
-    "jsonpath-plus": "11.2.0",
+    "jsonpath-plus": "11.2.1",
     "shell-quote": "1.12.0"
   }
 }
