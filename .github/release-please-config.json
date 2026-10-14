@@ -21,7 +21,8 @@
   ],
   "packages": {
     ".": {
-      "component": "zaly"
+      "component": "zaly",
+      "skip-changelog": true
     },
     "packages/agent": {
       "component": "agent",
