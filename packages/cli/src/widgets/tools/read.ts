@@ -29,7 +29,7 @@ export const readRenderer: ToolRenderer<ReadTool> = {
     const title = memo(() =>
       unwrap(props.result)?.isError === true ? `${path()}  (error)` : path()
     )
-    const content = memo(() => stripLineNumbers(justText(unwrap(props.result)?.content ?? "")))
+    const content = memo(() => justText(unwrap(props.result)?.content ?? ""))
     const numberOffset = memo(() => unwrap(props.result)?.meta?.offset ?? props.params?.offset)
 
     return box(
@@ -57,10 +57,4 @@ export const readRenderer: ToolRenderer<ReadTool> = {
       )
     )
   },
-}
-
-/** Drop the leading `   N→` / `   N  ` line-number prefix the read tool
- *  emits. Tolerant of slight format variations. */
-function stripLineNumbers(content: string): string {
-  return content.replaceAll(/^\s*\d+\t/gm, "")
 }

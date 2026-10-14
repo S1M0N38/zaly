@@ -34,9 +34,7 @@ async function callRead(args: Record<string, unknown>): Promise<ReadResult> {
   return (await readTool.call(validated, {})) as ReadResult
 }
 
-/** `readTool.call` returns either a string (untruncated) or a parts array
- *  ([MetaPart, TextPart] for truncated). Pull out the line-numbered text
- *  body either way so assertions stay focused. */
+/** Extract the plain text body independently of slice metadata. */
 async function readBody(args: Record<string, unknown>): Promise<string> {
   const result = await callRead(args)
   if (typeof result === "string") return result
@@ -45,61 +43,53 @@ async function readBody(args: Record<string, unknown>): Promise<string> {
   return text.text
 }
 
-/** Pull line numbers off the `cat -n`-style body. */
-function lineNumbers(body: string): number[] {
-  return body
-    .split("\n")
-    .map((l) => Number(l.slice(0, 6).trim()))
-    .filter((n) => Number.isFinite(n))
-}
-
 describe("read tool — negative offset (tail-style)", () => {
   test("offset: -50 with default limit returns the last 50 lines", async () => {
     const path = fileWith(200)
     const body = await readBody({ offset: -50, path })
-    const nums = lineNumbers(body)
-    expect(nums[0]).toBe(151)
-    expect(nums.at(-1)).toBe(200)
-    expect(nums).toHaveLength(50)
+    expect(body.split("\n")).toEqual(Array.from({ length: 50 }, (_, i) => `line ${151 + i}`))
   })
 
   test("offset: -50, limit: 20 reads 20 lines starting 50 from the end", async () => {
     const path = fileWith(200)
     const body = await readBody({ limit: 20, offset: -50, path })
-    const nums = lineNumbers(body)
-    expect(nums[0]).toBe(151)
-    expect(nums.at(-1)).toBe(170)
-    expect(nums).toHaveLength(20)
+    expect(body.split("\n")).toEqual(Array.from({ length: 20 }, (_, i) => `line ${151 + i}`))
   })
 
   test("offset: -1 returns just the last line", async () => {
     const path = fileWith(200)
     const body = await readBody({ offset: -1, path })
-    const nums = lineNumbers(body)
-    expect(nums).toEqual([200])
+    expect(body).toBe("line 200")
   })
 
   test("negative offset larger than file clamps to start (whole file)", async () => {
     const path = fileWith(30)
     const body = await readBody({ offset: -1000, path })
-    const nums = lineNumbers(body)
-    expect(nums[0]).toBe(1)
-    expect(nums.at(-1)).toBe(30)
-    expect(nums).toHaveLength(30)
+    expect(body.split("\n")).toEqual(Array.from({ length: 30 }, (_, i) => `line ${i + 1}`))
   })
 
   test("offset: 0 is treated as offset: 1 (head, off-by-one tolerance)", async () => {
     const path = fileWith(10)
     const body = await readBody({ limit: 3, offset: 0, path })
-    const nums = lineNumbers(body)
-    expect(nums).toEqual([1, 2, 3])
+    expect(body).toBe("line 1\nline 2\nline 3")
   })
 
-  test("untruncated tail of small file returns plain string", async () => {
+  test("full tail read includes slice metadata and unnumbered text", async () => {
     const path = fileWith(5)
     const result = await callRead({ offset: -10, path })
-    // Whole file fits, no truncation → plain string return
-    expect(typeof result).toBe("string")
+    expect(result).toEqual([
+      { content: "showing 1-5 of 5", tag: "slice", type: "meta" },
+      { text: "line 1\nline 2\nline 3\nline 4\nline 5", type: "text" },
+    ])
+  })
+
+  test("default full read includes slice metadata and preserves indentation", async () => {
+    const path = join(dir, "indented.txt")
+    writeFileSync(path, "  first\n\tsecond\n")
+    expect(await callRead({ path })).toEqual([
+      { content: "showing 1-2 of 2", tag: "slice", type: "meta" },
+      { text: "  first\n\tsecond", type: "text" },
+    ])
   })
 
   test("truncated tail surfaces correct showing range in MetaPart", async () => {

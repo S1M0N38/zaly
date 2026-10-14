@@ -185,23 +185,21 @@ function formatTextSlice(
 
   const out: string[] = []
   for (let i = start; i < end; i++) {
-    const lineNo = (i + 1).toString().padStart(6, " ")
     let line = lines[i]
     if (line.length > MAX_LINE_LENGTH) {
       line = `${line.slice(0, MAX_LINE_LENGTH)}… [line truncated, ${line.length} chars]`
     }
-    out.push(`${lineNo}\t${line}`)
+    out.push(line)
   }
 
   const text = out.join("\n")
   const full = start === 0 && end === lines.length
-  if (full) return { content: text, full, limit: lines.length, offset: 1 }
 
   // Empty slice (overshot offset): tell the agent the offset they asked
   // for and the real file size, rather than emitting a nonsensical
   // "showing 6-5 of 5"-style range.
   const sliceMsg =
-    start === end
+    start === end && lines.length > 1
       ? `offset ${offset} past end of file (${lines.length} lines)`
       : `showing ${start + 1}-${end} of ${lines.length}`
 
