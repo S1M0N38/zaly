@@ -59,11 +59,8 @@ export function checkFresh(
   return ret
 }
 
-/** Build the canonical "you need to read this first" error. Used by
- *  `write` (existing files only) and `edit` (always). The `code` is
- *  stable so the model can branch on it; the message tells the model
- *  what to do next; `data.reason` distinguishes never-read vs
- *  changed-since-read for downstream renderers. */
+/** Build the canonical freshness error. `data.reason` distinguishes
+ *  never-read from changed-since-read for callers and renderers. */
 export function freshnessError(path: string, reason: "NOT_READ" | "STALE"): AiError {
   return new AiError({
     code: "FILE_NOT_FRESH",

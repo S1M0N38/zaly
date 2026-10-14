@@ -13,9 +13,8 @@ import { isUnchanged } from "../utils/file.ts"
  * Read a file from disk.
  *
  * Output shape:
- *   - Text files → numbered lines, `cat -n` style (6-char padded number,
- *     tab, content). Line numbers reflect the absolute line in the file
- *     even when reading a slice via `offset`/`limit`.
+ *   - Text files → plain text plus a `<slice>` metadata part describing
+ *     the returned line range, including when reading the whole file.
  *   - Image files (png, jpeg, webp, gif, avif, …) → `ImagePart` attachment.
  *     The model sees the image natively if its modality supports it.
  *   - Other binary files → `BINARY_FILE` error with a hint.
@@ -43,7 +42,7 @@ export type ReadToolMeta = FileMeta & {
 // oxlint-disable-next-line sort-keys -- semantic field order: name, desc, params, call
 export const readTool = defineTool({
   name: "read",
-  desc: `Read a file. Text files return numbered lines (\`cat -n\` style). Image & PDF files are sent as attachments. Use \`offset\`/\`limit\` to slice large files.`,
+  desc: `Read a file. Text files return plain text with line-range metadata. Image & PDF files are sent as attachments. Use \`offset\`/\`limit\` to slice large files.`,
   parallel: true,
   // oxlint-disable-next-line sort-keys -- semantic param order
   params: Type.Object({
@@ -140,10 +139,8 @@ export const readTool = defineTool({
       offset: args.offset ?? 1,
     })
 
-    // Record the read so the freshness tracker knows we've seen this
-    // file's current bytes. write/edit consult this before mutating;
-    // the masker uses `full` to know whether this read subsumes
-    // earlier reads of the same path.
+    // Record the observed mtime for unchanged-read detection. The masker
+    // uses `full` to know whether this read subsumes earlier reads.
     ctx.meta = {
       full: slice.full,
       kind: "read",
@@ -157,10 +154,7 @@ export const readTool = defineTool({
   },
 })
 
-/** Format a slice of file content as numbered lines plus, when the
- *  slice doesn't cover the whole file, a `<slice>` MetaPart with
- *  "showing X-Y of Z" info is included, Full reads return a plain
- *  string for the cleanest model surface. */
+/** Return plain text and line-range metadata for both full and sliced reads. */
 function formatTextSlice(
   content: string,
   { offset, limit }: { offset: number; limit: number }

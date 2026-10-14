@@ -11,13 +11,8 @@ import { show } from "@zaly/tui/widgets/show"
 
 const PREVIEW_LINE_LIMIT = 10
 
-/** Result renderer for the `read` tool. Once the file contents land,
- *  render them as a syntax-highlighted code block titled with the path.
- *
- *  The kernel's read tool prefixes lines with `cat -n`-style numbering;
- *  we strip it before highlighting so shiki tokens line up with the
- *  source. The numbering is regenerated visually by the terminal's
- *  natural row count anyway. */
+/** Render plain read output as a syntax-highlighted code block with
+ *  visual line numbers based on the read's offset metadata. */
 export const readRenderer: ToolRenderer<ReadTool> = {
   result(props: ToolResultCtx<ReadTool>) {
     const path = memo(() => {
