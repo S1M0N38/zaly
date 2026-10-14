@@ -3,7 +3,7 @@
   "release-type": "node",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
-  "separate-pull-requests": false,
+  "separate-pull-requests": true,
   "prerelease": false,
   "changelog-sections": [
     { "type": "feat", "section": "🚀 Enhancements" },
@@ -21,48 +21,18 @@
   ],
   "packages": {
     ".": {
-      "component": "zaly",
-      "skip-changelog": true
-    },
-    "packages/agent": {
-      "component": "agent",
-      "skip-github-release": true
-    },
-    "packages/ai": {
-      "component": "ai",
-      "skip-github-release": true
-    },
-    "packages/cli": {
-      "component": "cli",
-      "skip-github-release": true
-    },
-    "packages/config": {
-      "component": "config",
-      "skip-github-release": true
-    },
-    "packages/plugin": {
-      "component": "plugin",
-      "skip-github-release": true
-    },
-    "packages/shared": {
-      "component": "shared",
-      "skip-github-release": true
-    },
-    "packages/tui": {
-      "component": "tui",
-      "skip-github-release": true
+      "extra-files": [
+        { "type": "json", "path": "packages/agent/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/ai/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/cli/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/config/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/plugin/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/shared/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "packages/tui/package.json", "jsonpath": "$.version" }
+      ]
     }
   },
-  "bootstrap-sha": "d3faba0a317acb678c01619b360c11d9d5f05e30",
-  "include-component-in-tag": true,
-  "include-v-in-tag": true,
-  "plugins": [
-    {
-      "type": "linked-versions",
-      "groupName": "zaly",
-      "components": ["zaly", "agent", "ai", "cli", "config", "plugin", "shared", "tui"],
-      "merge": false
-    }
-  ],
-  "group-pull-request-title-pattern": "chore${scope}: release${component} ${version}"
+  "bootstrap-sha": "297a711069ff4afecc7783ae4cd463391effa806",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true
 }
