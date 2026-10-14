@@ -11,7 +11,7 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { force: true, recursive: true })
 })
 
-function fixture(fail = false, dryRun = false, relativeDirectory = false) {
+function fixture(fail = false, dryRun = false, relativeDirectory = false, mixedVersions = false) {
   const dir = mkdtempSync(join(tmpdir(), "zaly-publish-test-"))
   dirs.push(dir)
   const log = join(dir, "commands")
@@ -39,7 +39,7 @@ fi
       commit: "a".repeat(40),
       packages: ["published", "first", "second"].map((name) => ({
         name: `@test/${name}`,
-        version: "1.0.0",
+        version: mixedVersions && name === "second" ? "2.0.0" : "1.0.0",
         tarball: `${name}.tgz`,
       })),
     })
@@ -62,7 +62,7 @@ fi
       timeout: 15_000,
     }
   )
-  return { ...result, dir, commands: readFileSync(log, "utf8").trim().split("\n") }
+  return { ...result, dir, commands: readFileSync(log, "utf8").trim().split("\n").filter(Boolean) }
 }
 
 test("publication preflights every package and skips published versions", () => {
@@ -72,6 +72,13 @@ test("publication preflights every package and skips published versions", () => 
   expect(result.commands.slice(3)).toHaveLength(2)
   expect(result.commands[3]).toContain("first.tgz --access public")
   expect(result.commands[4]).toContain("second.tgz --access public")
+})
+
+test("unsynchronized artifacts fail before registry lookups or publication", () => {
+  const result = fixture(false, false, false, true)
+  expect(result.status).not.toBe(0)
+  expect(result.stderr).toContain("Public package versions must be synchronized")
+  expect(result.commands).toEqual([])
 })
 
 test("relative artifact directories produce absolute npm file arguments", () => {

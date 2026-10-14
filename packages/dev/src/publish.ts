@@ -47,6 +47,9 @@ export function publishArgs(opts: PublishOptions, tarball: string): string[] {
 export async function publishArtifacts(dir: string, opts: PublishOptions): Promise<void> {
   dir = resolve(dir)
   const manifest = readManifest(dir)
+  if (new Set(manifest.packages.map((pkg) => pkg.version)).size > 1) {
+    throw new Error("Public package versions must be synchronized; merge the release PR first")
+  }
   const pending = []
   // Resolve every registry lookup before publishing any package.
   for (const pkg of manifest.packages) {
