@@ -1,6 +1,7 @@
 import type { Content } from "@zaly/ai"
 
 import { justText } from "@zaly/ai"
+import { find as findFiles } from "@zaly/shared/find"
 import { execFileSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -42,6 +43,15 @@ test("includes hidden files while respecting ignore files and default exclusions
   expect(files).not.toContain("ignored.txt")
   expect(files.some((file) => file.startsWith(".git/"))).toBe(false)
   expect(files.some((file) => file.startsWith("node_modules/"))).toBe(false)
+})
+
+test("glob fallback returns ignore files while respecting their rules", async () => {
+  const batches = await Array.fromAsync(findFiles({ backend: "glob", cwd: dir, hidden: true }))
+  const files = batches.flat()
+  expect(files).toContain(".gitignore")
+  expect(files).toContain(".github/config.yml")
+  expect(files).not.toContain("ignored.txt")
+  expect(files.some((file) => file.startsWith(".git/"))).toBe(false)
 })
 
 test("can hide dotfiles explicitly", async () => {
