@@ -1,5 +1,7 @@
 # Changelog
 
+This changelog is archived through version `0.0.9`. Subsequent changes are tracked in the [root changelog](https://github.com/folke/zaly/blob/main/CHANGELOG.md).
+
 ## [0.0.9](https://github.com/folke/zaly/compare/ai-v0.0.7...ai-v0.0.9) (2026-10-14)
 
 
