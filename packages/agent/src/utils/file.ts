@@ -53,7 +53,7 @@ export function checkFresh(
 
   for (const { m, $p, p } of extractToolResults<FileMeta>(messages)) {
     const id = m.id
-    if (!id || !isFileMeta(p.meta) || ctx.isMasked?.(id, $p)) continue
+    if (!id || !isFileMeta(p.meta) || p.meta.path !== path || ctx.isMasked?.(id, $p)) continue
     if (opts.full && !p.meta.full) continue
     if (p.meta.mtime === mtime) return true // Fresh! The file's mtime matches what we saw at read time.
     ret = freshnessError(path, "STALE")

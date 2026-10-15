@@ -178,16 +178,17 @@ function formatTextSlice(
   const end = Math.min(lines.length, start + limit)
 
   const out: string[] = []
+  let full = start === 0 && end === lines.length
   for (let i = start; i < end; i++) {
     let line = lines[i]
     if (line.length > MAX_LINE_LENGTH) {
+      full = false
       line = `${line.slice(0, MAX_LINE_LENGTH)}… [line truncated, ${line.length} chars]`
     }
     out.push(line)
   }
 
   const text = out.join("\n")
-  const full = start === 0 && end === lines.length
 
   // Empty slice (overshot offset): tell the agent the offset they asked
   // for and the real file size, rather than emitting a nonsensical
