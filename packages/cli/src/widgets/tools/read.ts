@@ -8,12 +8,45 @@ import { box } from "@zaly/tui/widgets/box"
 import { code } from "@zaly/tui/widgets/code"
 import { log } from "@zaly/tui/widgets/log"
 import { show } from "@zaly/tui/widgets/show"
+import { text } from "@zaly/tui/widgets/text"
+import { fileCall } from "./default.ts"
 
-const PREVIEW_LINE_LIMIT = 10
+const PREVIEW_LINE_LIMIT = 5
 
-/** Render plain read output as a syntax-highlighted code block with
- *  visual line numbers based on the read's offset metadata. */
+/** Show requested/resolved line ranges in the call preview and render
+ *  text results as numbered, syntax-highlighted code blocks. */
 export const readRenderer: ToolRenderer<ReadTool> = {
+  call(props) {
+    const path = fileCall(props)
+    // Let flex shrink the path; toolPreview truncates it to the allocated width.
+    path.state.wrap = "char"
+
+    const range = memo(() => {
+      const result = unwrap(props.result)
+      const meta = result?.meta
+      if (result === undefined) {
+        const offset = props.params?.offset ?? 1
+        const limit = props.params?.limit
+        if (offset < 0) {
+          return limit !== undefined && limit < -offset
+            ? `${-offset} from end · ${limit} line${limit === 1 ? "" : "s"}`
+            : `last ${-offset} line${offset === -1 ? "" : "s"}`
+        } else if (limit !== undefined) {
+          const start = Math.max(1, offset)
+          return `${start}–${start + limit - 1}`
+        } else if (offset > 1) return `${offset}–…`
+      } else if (!result.isError && meta?.kind === "read" && !meta.full && !meta.unchanged) {
+        return meta.limit > 0 ? `${meta.offset}–${meta.offset + meta.limit - 1}` : "no lines"
+      }
+      return ""
+    })
+    return box(
+      { flexDirection: "row", gap: 1 },
+      path,
+      text(range, { flexShrink: 0, style: "quiet" })
+    )
+  },
+
   result(props: ToolResultCtx<ReadTool>) {
     const path = memo(() => {
       const p = unwrap(props.result)?.meta?.path

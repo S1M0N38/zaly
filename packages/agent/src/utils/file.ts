@@ -1,4 +1,4 @@
-import type { ToolContext } from "@zaly/ai"
+import type { Tool, ToolContext } from "@zaly/ai"
 
 import { AiError, extractToolResults } from "@zaly/ai"
 import { normPath, safeStat } from "@zaly/shared"
@@ -15,6 +15,8 @@ export type FileMeta = {
   full?: boolean
   unchanged?: boolean
 }
+
+export type FileTool = Tool<{ path: string }, unknown, FileMeta>
 
 function isFileMeta(meta: unknown): meta is FileMeta {
   const m = meta as Partial<Record<string, unknown>> | undefined | null
