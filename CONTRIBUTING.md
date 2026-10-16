@@ -34,12 +34,23 @@ bun docs:build     # Regenerate references and check the production build/links
 bun docs:preview   # Preview the production build
 ```
 
-The five generated pages in `docs/reference/` come from `packages/dev/src/docs.ts`.
-Edit their source definitions rather than the Markdown; run `bun docs:generate`
-after changing settings, tool definitions, CLI arguments, or actions. Commit the
-updated pages. Restart `docs:dev` or regenerate manually after source-definition
-changes; VitePress watches Markdown, not the generator's inputs. `docs/nav.md` is
-a planning document excluded from the website. Styling uses the default theme.
+The five generated sections in `docs/reference/` come from `packages/dev/src/docs.ts`.
+Handwritten introductions/examples outside `<!-- name:start -->` / `<!-- name:end -->`
+markers are preserved exactly. Edit source definitions for generated content; never
+remove, duplicate, or nest the markers. The generator validates every page before
+writing and leaves unchanged files untouched.
+
+Run `bun docs:generate` after changing settings, tools, CLI arguments, or actions.
+You can commit the resulting changes with your code, but CI also regenerates them:
+differences do not block PR builds or deployment. Main builds deploy the fresh site
+and maintain one `chore(docs): sync generated references` PR to record the changes.
+Enable GitHub Actions PR creation in repository settings. As with Models, bot PRs
+use `GITHUB_TOKEN` and don't automatically trigger another CI run; the source run
+already built the regenerated site.
+
+Restart `docs:dev` or regenerate manually after source-definition changes;
+VitePress watches Markdown, not generator inputs. `docs/nav.md` is a planning
+document excluded from the website. Styling uses the default theme.
 
 For versioning, CI publication, and recovery, see the
 [release guide](./packages/dev/docs/releases.md). Versions and changelogs are managed

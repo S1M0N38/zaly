@@ -28,13 +28,70 @@ jobs:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun docs:build
-      - name: Check generated references are current
-        run: git diff --exit-code -- docs/reference
+      - name: Summarize generated reference updates
+        shell: bash
+        run: |
+          if ! git diff --quiet -- docs/reference; then
+            {
+              echo '### Generated reference updates'
+              echo 'The site uses freshly generated content. A rolling PR records these changes on main.'
+              echo '```text'
+              git diff --stat -- docs/reference
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload generated references
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-references
+          path: |
+            docs/reference/cli.md
+            docs/reference/commands.md
+            docs/reference/keybindings.md
+            docs/reference/settings.md
+            docs/reference/tools.md
       - name: Upload site
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
+
+  sync-references:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-references
+          path: docs/reference
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/docs-reference-sync
+          base: main
+          delete-branch: true
+          title: "chore(docs): sync generated references"
+          commit-message: "chore(docs): sync generated references"
+          body: |
+            Record reference sections generated from the current source definitions.
+
+            The website deployment uses these freshly generated files independently
+            of this PR. Merging records them in Git for review and history.
+
+            Handwritten content outside the generated markers is preserved.
+          add-paths: |
+            docs/reference/cli.md
+            docs/reference/commands.md
+            docs/reference/keybindings.md
+            docs/reference/settings.md
+            docs/reference/tools.md
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
