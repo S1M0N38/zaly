@@ -8,7 +8,7 @@ export const ConfigSchema = {
                 properties: {
                     model: {
                         type: "string",
-                        description: "Defaul model to use for the agent *"
+                        description: "Default model to use for the agent."
                     },
                     reasoning: {
                         type: "string",
@@ -21,7 +21,7 @@ export const ConfigSchema = {
                             "off",
                             "xhigh"
                         ],
-                        description: "Default reasoning effort *"
+                        description: "Default reasoning effort."
                     },
                     tools: {
                         type: "array",
@@ -38,7 +38,7 @@ export const ConfigSchema = {
                                     "fullscreen",
                                     "scrollback"
                                 ],
-                                description: "scrollback: preserves terminal scrollback/search; footer scrolls away with mouse wheel because the terminal is scrolling\n/* fullscreen: alternate screen + mouse; footer stays fixed; dedicated app viewport"
+                                description: "Terminal display mode. Scrollback preserves terminal history/search; fullscreen uses an alternate screen with a fixed footer."
                             },
                             copyOnSelect: {
                                 type: "boolean"
@@ -124,7 +124,7 @@ export const ConfigSchema = {
                         },
                         required: [],
                         additionalProperties: false,
-                        description: "Template commands *"
+                        description: "Template commands."
                     },
                     compaction: {
                         type: "object",

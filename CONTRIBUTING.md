@@ -28,6 +28,19 @@ or `feat(agent): ...` for release notes.
 Root `docs/` is for the user-facing documentation website. Package-specific
 contributor and embedding guides live in `packages/<name>/docs/` where needed.
 
+```sh
+bun docs:dev       # Generate references and start VitePress
+bun docs:build     # Regenerate references and check the production build/links
+bun docs:preview   # Preview the production build
+```
+
+The five generated pages in `docs/reference/` come from `packages/dev/src/docs.ts`.
+Edit their source definitions rather than the Markdown; run `bun docs:generate`
+after changing settings, tool definitions, CLI arguments, or actions. Commit the
+updated pages. Restart `docs:dev` or regenerate manually after source-definition
+changes; VitePress watches Markdown, not the generator's inputs. `docs/nav.md` is
+a planning document excluded from the website. Styling uses the default theme.
+
 For versioning, CI publication, and recovery, see the
 [release guide](./packages/dev/docs/releases.md). Versions and changelogs are managed
 through release-please; don't bump package versions individually.
