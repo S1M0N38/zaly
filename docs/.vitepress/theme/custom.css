@@ -99,6 +99,10 @@ html.dark .home-wordmark.light {
   border-radius: 10px;
 }
 
+.home-install .vp-code-group div[class*="language-"].active {
+  margin: 0;
+}
+
 .home-install > p {
   color: var(--vp-c-text-2);
   font-size: 14px;
