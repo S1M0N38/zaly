@@ -50,7 +50,12 @@ already built the regenerated site.
 
 Restart `docs:dev` or regenerate manually after source-definition changes;
 VitePress watches Markdown, not generator inputs. `docs/nav.md` is a planning
-document excluded from the website. Styling uses the default theme.
+document excluded from the website. Styling extends the default theme in
+`docs/.vitepress/theme/`.
+
+CLI demo tapes live in `packages/cli/demo/`; recordings and posters are versioned
+in `docs/public/demos/`. Regenerate them manually with VHS when the demonstrated
+UI changes. See the [recording guide](./packages/cli/demo/README.md).
 
 For versioning, CI publication, and recovery, see the
 [release guide](./packages/dev/docs/releases.md). Versions and changelogs are managed

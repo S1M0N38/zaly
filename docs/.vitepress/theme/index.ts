@@ -6,7 +6,9 @@ import DefaultTheme from "vitepress/theme-without-fonts"
 import "virtual:group-icons.css"
 import "./fonts.css"
 import "./custom.css"
+// @ts-ignore -- Vue SFC, no .d.ts generated.
+import Layout from "./Layout.vue"
 
-const theme: Theme = { extends: DefaultTheme }
+const theme: Theme = { extends: DefaultTheme, Layout }
 
 export default theme

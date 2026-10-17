@@ -2,7 +2,6 @@
 layout: home
 
 hero:
-  name: '<img class="home-wordmark light" src="/logo/wordmark-light.svg" alt="zaly" width="206" height="110"><img class="home-wordmark dark" src="/logo/wordmark-dark.svg" alt="zaly" width="206" height="110">'
   text: Hackable terminal coding agent.
   tagline: Work in your terminal. Choose your model. Make the agent your own.
   actions:
@@ -13,28 +12,6 @@ hero:
       text: GitHub
       link: https://github.com/folke/zaly
 ---
-
-<div class="home-install">
-
-::: code-group
-
-```sh [bun]
-bun add -g @zaly/cli
-```
-
-```sh [npm]
-npm install -g @zaly/cli
-```
-
-```sh [pnpm]
-pnpm add -g @zaly/cli
-```
-
-:::
-
-Then run `zaly` in your project. [Node.js 22.18+ · Linux & macOS](./guide/installation.md)
-
-</div>
 
 <div class="home-details">
 <section class="home-detail">
