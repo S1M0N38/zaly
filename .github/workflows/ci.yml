@@ -72,17 +72,19 @@ jobs:
       cancel-in-progress: false
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
     outputs:
       release_created: ${{ steps.release-please.outputs.release_created }}
     steps:
+      - name: Create automation token
+        id: automation-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
       - uses: googleapis/release-please-action@v4
         id: release-please
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.automation-token.outputs.token }}
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
           target-branch: main

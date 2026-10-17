@@ -61,9 +61,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,8 +69,15 @@ jobs:
         with:
           name: generated-references
           path: docs/reference
+      - name: Create automation token
+        id: automation-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
       - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ steps.automation-token.outputs.token }}
           branch: automation/docs-reference-sync
           base: main
           delete-branch: true

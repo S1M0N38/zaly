@@ -15,9 +15,6 @@ concurrency:
 jobs:
   models:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -28,9 +25,15 @@ jobs:
       - run: bun --workspaces install --frozen-lockfile
       - name: Update catalog and write review report
         run: bun run models --report "$RUNNER_TEMP/models-report.md"
+      - name: Create automation token
+        id: automation-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
       - uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.automation-token.outputs.token }}
           branch: automation/models-catalog
           delete-branch: true
           add-paths: packages/ai/assets/models.json
