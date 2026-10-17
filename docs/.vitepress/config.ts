@@ -5,9 +5,23 @@ export default defineConfig({
   title: "zaly",
   description: "Hackable terminal coding agent.",
   cleanUrls: true,
+  head: [
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/logo/mark.svg" }],
+    [
+      "link",
+      {
+        rel: "preload",
+        href: "/fonts/geist-1.8.1/Geist-Variable.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossorigin: "anonymous",
+      },
+    ],
+  ],
   srcExclude: ["nav.md"],
   sitemap: { hostname: "https://zaly.dev" },
   markdown: {
+    // theme: { light: "github-light", dark: "tokyo-night" },
     config(md) {
       md.use(groupIconMdPlugin)
     },
@@ -25,6 +39,8 @@ export default defineConfig({
     ],
   },
   themeConfig: {
+    logo: { light: "/logo/wordmark-light.svg", dark: "/logo/wordmark-dark.svg", alt: "zaly" },
+    siteTitle: false,
     nav: [
       { text: "Guide", link: "/guide/" },
       { text: "Configuration", link: "/configuration/" },

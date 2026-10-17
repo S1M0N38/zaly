@@ -2,31 +2,19 @@
 layout: home
 
 hero:
-  name: zaly
+  name: '<img class="home-wordmark light" src="/logo/wordmark-light.svg" alt="zaly" width="206" height="110"><img class="home-wordmark dark" src="/logo/wordmark-dark.svg" alt="zaly" width="206" height="110">'
   text: Hackable terminal coding agent.
-  tagline: Work with an AI agent in your terminal, with persistent sessions, explicit permissions, and room to make it your own.
+  tagline: Work in your terminal. Choose your model. Make the agent your own.
   actions:
     - theme: brand
       text: Get started
       link: /guide/
     - theme: alt
-      text: View on GitHub
+      text: GitHub
       link: https://github.com/folke/zaly
-
-features:
-  - title: Stay in the conversation
-    details: Steer ongoing work without interrupting active tools. Inspect context, resume sessions, and keep long-running tasks moving.
-  - title: Choose your model
-    details: Authenticate with supported providers using API keys or supported login flows, including OpenAI Codex with a ChatGPT subscription.
-  - title: Make it yours
-    details: Add project instructions, commands, templates, skills, plugins, and themes.
 ---
 
-::: warning Alpha software
-zaly is useful today, but APIs, configuration, session formats, and behavior can
-change before 1.0. These docs target the current repository; installed releases
-may differ. Linux and macOS are the tested platforms. Windows is untested.
-:::
+<div class="home-install">
 
 ::: code-group
 
@@ -44,7 +32,103 @@ pnpm add -g @zaly/cli
 
 :::
 
-```sh
-cd your-project
-zaly
+Then run `zaly` in your project. [Node.js 22.18+ · Linux & macOS](./guide/installation.md)
+
+</div>
+
+<div class="home-details">
+<section class="home-detail">
+<div>
+
+<p class="home-label">01 / Your models</p>
+
+## Choose the model, keep the workflow.
+
+Use supported providers with API keys or browser login, including ChatGPT
+subscription access through Codex. Switch models without leaving the conversation.
+Your sessions stay in your terminal, not in another browser tab.
+
+[Connect a provider →](./configuration/models.md)
+
+</div>
+<div class="home-example">
+
+Inside zaly
+
+```text
+/login
+/model
+/effort
 ```
+
+</div>
+</section>
+<section class="home-detail">
+<div>
+
+<p class="home-label">02 / Your workflow</p>
+
+## Make your next prompt a command.
+
+Turn a Markdown file into a reusable slash command. Add arguments, expressions,
+and project context. Go further with instructions, skills, and plugins—without
+forking the agent.
+
+[Create a command →](./extend/commands.md)
+
+</div>
+<div class="home-example">
+
+.zaly/commands/review.md
+
+```md
+---
+description: Review selected code
+---
+
+Review {{ args }} for correctness.
+Explain concrete problems and suggest fixes,
+but don't edit files yet.
+```
+
+</div>
+</section>
+<section class="home-detail">
+<div>
+
+<p class="home-label">03 / Your boundaries</p>
+
+## Decide what needs approval.
+
+Start with a permission preset, then refine the allow, ask, and deny rules.
+Permissions govern tool operations, not just what the prompt tells the model to do.
+Inspect requests and approve the work you actually want.
+
+[Understand permissions →](./configuration/permissions.md)
+
+</div>
+<div class="home-example">
+
+.zaly/config.json
+
+```json
+{
+  "permissions": {
+    "preset": "readonly",
+    "ask": ["write(*)"],
+    "deny": ["bash(sudo:*)"]
+  }
+}
+```
+
+</div>
+</section>
+</div>
+
+<div class="home-note">
+
+**Useful today. Still alpha.** APIs, configuration, and session formats can change
+before 1.0. These docs follow the repository; installed releases may differ.
+Linux and macOS are tested. Windows is untested.
+
+</div>
