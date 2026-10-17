@@ -6,10 +6,12 @@ frames=$(mktemp -d "${TMPDIR:-/tmp}/zaly-recording.XXXXXX")
 trap 'rm -rf "$frames"' EXIT
 
 mkdir -p docs/public/demos
+export ZALY_DEMO_CAST="$frames/quickstart.cast"
 {
   printf 'Output "%s/frames/"\n' "$frames"
   sed '/^Output /d' packages/cli/demo/quickstart.tape
 } | vhs
+bun packages/cli/demo/cast.ts "$ZALY_DEMO_CAST" docs/public/demos/quickstart.cast
 
 # VHS's default WebM uses lossy 4:2:0 encoding, which softens colored text.
 # Encode the original text/cursor frames losslessly with full chroma resolution.

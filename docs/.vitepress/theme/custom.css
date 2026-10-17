@@ -129,16 +129,62 @@
 }
 
 .home-demo {
+  position: relative;
   margin: 0;
-}
-
-.home-demo video {
-  display: block;
-  width: 100%;
-  height: auto;
   overflow: hidden;
   border: 1px solid var(--vp-c-divider);
   border-radius: 12px;
+  background: #16161e;
+}
+
+.home-demo-player {
+  width: 100%;
+}
+
+.home-demo-player:empty,
+.home-demo-error {
+  aspect-ratio: 69 / 42;
+}
+
+.home-demo-error {
+  display: grid;
+  margin: 0;
+  place-items: center;
+  color: #c0caf5;
+}
+
+.home-demo .ap-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.home-demo .ap-player {
+  border-radius: 0;
+}
+
+.home-demo .ap-overlay {
+  display: none;
+}
+
+.home-demo .asciinema-player-theme-zaly {
+  --term-color-background: #16161e;
+  --term-color-foreground: #c0caf5;
+  --term-color-0: #363b54;
+  --term-color-1: #f7768e;
+  --term-color-2: #41a6b5;
+  --term-color-3: #e0af68;
+  --term-color-4: #7aa2f7;
+  --term-color-5: #bb9af7;
+  --term-color-6: #7dcfff;
+  --term-color-7: #787c99;
+  --term-color-8: #363b54;
+  --term-color-9: #f7768e;
+  --term-color-10: #41a6b5;
+  --term-color-11: #e0af68;
+  --term-color-12: #7aa2f7;
+  --term-color-13: #bb9af7;
+  --term-color-14: #7dcfff;
+  --term-color-15: #acb0d0;
 }
 
 .home-details {

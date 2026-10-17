@@ -43,6 +43,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitest/coverage-v8": "5.0.4",
     "@zaly/dev": "workspace:*",
+    "asciinema-player": "^3.17.0",
     "knip": "^6.41.0",
     "oxfmt": "^0.73.0",
     "oxlint": "^1.88.0",
