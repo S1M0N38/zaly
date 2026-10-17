@@ -154,7 +154,7 @@ function toTui(id: ShikiTheme, theme: ThemeRegistrationResolved): Partial<Theme>
 
     // ── base palette (VSCode color slots) ──────────────────────────────
     text: fg,
-    subtle: t.color("terminal.ansiBrightBlack"),
+    subtle: t.color("textCodeBlock.background", "editor.background"),
     ui: { bg, fg },
     primary: t.color("textLink.foreground", "terminal.ansiBlue"),
     accent: t.color("textLink.activeForeground", "terminal.ansiMagenta"),
@@ -174,6 +174,7 @@ function toTui(id: ShikiTheme, theme: ThemeRegistrationResolved): Partial<Theme>
     selection: optBg(t.color("editor.selectionBackground")),
 
     // ── diff (mix VSCode bg + TextMate fg) ─────────────────────────────
+    diffContext: t.color("textCodeBlock.background", "editor.background"),
     diffAdd: combine(
       t.color("diffEditor.insertedTextBackground", "diffEditor.insertedLineBackground"),
       t.fg("markup.inserted.diff")
