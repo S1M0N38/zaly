@@ -12,7 +12,10 @@ const COMMON_PARAMS = ["path", "command", "url", "pattern", "glob"]
 export function toolPreview(tool: string, params: Reactive<string | Record<string, unknown>> = "") {
   return text((ctx) => {
     const { style, width } = ctx
-    const p = toolParams(unwrap(params), { width: Math.min(80, width - tool.length - 2) })
+    const p = toolParams(unwrap(params), {
+      style: ctx.style,
+      width: Math.min(80, width - tool.length - 2),
+    })
     return `${style.primary.bold(tool)}(${p})`
   })
 }
