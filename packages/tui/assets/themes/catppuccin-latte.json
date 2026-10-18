@@ -24,9 +24,6 @@
     "bg": "#e9c4cf",
     "fg": "#d20f39"
   },
-  "diffTitle": {
-    "fg": "#1e66f5"
-  },
   "comment": {
     "italic": true,
     "fg": "#7c7f93"

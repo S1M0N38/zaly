@@ -23,9 +23,6 @@
   "diffDel": {
     "fg": "#e06c75"
   },
-  "diffTitle": {
-    "fg": "#61afef"
-  },
   "comment": {
     "italic": true,
     "fg": "#7f848e"

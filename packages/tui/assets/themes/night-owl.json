@@ -24,10 +24,6 @@
     "bg": "#31222f",
     "fg": "#87383e"
   },
-  "diffTitle": {
-    "italic": true,
-    "fg": "#a2bffc"
-  },
   "comment": {
     "italic": true,
     "fg": "#637777"
