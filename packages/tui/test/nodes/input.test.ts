@@ -45,6 +45,20 @@ function cursorCtx(width = 40) {
   return ret
 }
 
+const clusters = [
+  { name: "ZWJ emoji", text: "👩‍💻", width: 2 },
+  { name: "variation-selector emoji", text: "❤️", width: 2 },
+  { name: "skin-tone emoji", text: "👍🏽", width: 2 },
+  { name: "flag", text: "🇰🇷", width: 2 },
+  { name: "combining mark", text: "e\u0301", width: 1 },
+]
+
+function markedCursorCtx(width = 40) {
+  const ret = ctx(width)
+  ;(ret.style as { inverse: (s: string) => string }).inverse = (s: string) => `<${s}>`
+  return ret
+}
+
 describe("Input — initial state", () => {
   test("defaults to empty value and cursor=0", () => {
     const n = input()
@@ -123,6 +137,47 @@ describe("Input.actions — cursor motion", () => {
     expect(n.state.cursor).toBe(2)
   })
 
+  test("cursorUp preserves the visual column across a double-width character", () => {
+    const n = input({ cursor: 5, value: "가x\nabc" })
+    n.actions["input.cursorUp"]()
+    expect(n.state.cursor).toBe(1)
+  })
+
+  test.each(clusters)("cursorUp lands after a complete $name", ({ text, width }) => {
+    const value = `${text}x\nabc`
+    const n = input({ cursor: text.length + 2 + width, value })
+    n.actions["input.cursorUp"]()
+    expect(n.state.cursor).toBe(text.length)
+  })
+
+  test.each(clusters)("cursorDown lands after a complete $name", ({ text, width }) => {
+    const n = input({ cursor: width, value: `abc\n${text}x` })
+    n.actions["input.cursorDown"]()
+    expect(n.state.cursor).toBe(4 + text.length)
+  })
+
+  test.each(clusters.filter(({ width }) => width === 2))(
+    "vertical movement never lands inside a $name",
+    ({ text }) => {
+      const n = input({ cursor: 1, value: `abc\n${text}x` })
+      n.actions["input.cursorDown"]()
+      expect(n.state.cursor).toBe(4)
+      n.actions["input.cursorUp"]()
+      expect(n.state.cursor).toBe(1)
+    }
+  )
+
+  test.each(clusters)(
+    "preserves the preferred column from a $name across a short line",
+    ({ text, width }) => {
+      const n = input({ cursor: text.length, value: `${text}x\nq\nabc` })
+      n.actions["input.cursorDown"]()
+      expect(n.state.cursor).toBe(text.length + 3)
+      n.actions["input.cursorDown"]()
+      expect(n.state.cursor).toBe(text.length + 4 + width)
+    }
+  )
+
   test("cursorUp clamps to end of prev line when col exceeds it", () => {
     const n = input({ cursor: 9, value: "ab\nlonger" })
     n.actions["input.cursorUp"]()
@@ -139,6 +194,12 @@ describe("Input.actions — cursor motion", () => {
     const n = input({ cursor: 1, value: "abcd\nefgh" })
     n.actions["input.cursorDown"]()
     expect(n.state.cursor).toBe(6)
+  })
+
+  test("cursorDown preserves the visual column across a double-width character", () => {
+    const n = input({ cursor: 2, value: "abc\n가x" })
+    n.actions["input.cursorDown"]()
+    expect(n.state.cursor).toBe(5)
   })
 
   test("cursorDown on the last line is a no-op", () => {
@@ -506,6 +567,23 @@ describe("Input — render", () => {
     void n.emit("focus")
     const rows = await n.render(cursorCtx(40))
     expect(rows).toEqual(["asdasdaddd", "sdss", "█", "sss kkkdddd"])
+  })
+
+  test("renders the cursor after a double-width character", async () => {
+    const n = input({ cursor: 1, value: "가a" })
+    n.mount(mockMountCtx("ui"))
+    void n.emit("focus")
+
+    const rows = await n.render(markedCursorCtx(20))
+
+    expect(rows).toEqual(["가<a>"])
+  })
+
+  test.each(clusters)("renders the cursor after a complete $name", async ({ text }) => {
+    const n = input({ cursor: text.length, value: `${text}a` })
+    n.mount(mockMountCtx("ui"))
+    void n.emit("focus")
+    expect(await n.render(markedCursorCtx(20))).toEqual([`${text}<a>`])
   })
 
   test("cursorLeft from the end of a multiline input visibly moves onto the last char", async () => {
