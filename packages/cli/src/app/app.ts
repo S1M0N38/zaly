@@ -149,6 +149,7 @@ export class App {
     const mode = this.ctx.flags.mode ?? this.$.ui.mode
     this.#renderer = await createRenderer({
       altScreen: mode === "fullscreen",
+      defaultStyle: { bg: "ui", fg: "text" },
       fixedFooterHeight: 5,
       images: toAccessor(() => this.$.ui.images),
       logger: this.#ctx.logger.child("renderer"),

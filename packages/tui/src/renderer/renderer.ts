@@ -3,6 +3,7 @@ import type { Node } from "../core/node.ts"
 import type { Owner, Reactive } from "../core/reactive.ts"
 import type { ActionDef } from "../input/actions.ts"
 import type { TuiReporterOpts } from "../services/logger.ts"
+import type { Style } from "../style/types.ts"
 import type { Theme } from "../themes/types.ts"
 import type { RenderFrame } from "./frame.ts"
 import type { Surface } from "./surface.ts"
@@ -29,7 +30,9 @@ import { defaultActions } from "../input/defaults.ts"
 import { TerminalQueries } from "../input/queries.ts"
 import { InputRouter } from "../input/router.ts"
 import { TuiReporter } from "../services/logger.ts"
+import { RESET } from "../style/ansi.ts"
 import { styleBuilder as buildStyle } from "../style/builder.ts"
+import { openStyle } from "../style/style.ts"
 import { defaultTheme } from "../themes/registry.ts"
 import { Frame } from "./frame.ts"
 import { OverlaySurface } from "./overlay.ts"
@@ -43,6 +46,8 @@ export interface RendererOptions {
   stdout?: TerminalWriter
   images?: Reactive<boolean>
   theme?: Theme
+  /** Base colors for painted rows and cleared cells, resolved against the theme. */
+  defaultStyle?: Pick<Style, "fg" | "bg">
   /** Baseline footer height in rows — the size the footer occupies in
    *  "steady state" (no autocomplete, no transient widget growth).
    *  Stream uses `terminal.rows - fixedFooterHeight` as its commit
@@ -122,6 +127,7 @@ export class Renderer extends Emitter<RenderEvents> {
   readonly #stdin: TerminalReader & { setEncoding?: (enc: string) => void }
 
   #theme = signal<Theme | undefined>(undefined)
+  readonly #defaultStyle: RendererOptions["defaultStyle"]
 
   /** Root Owner — every surface's function-shape `add` / `append` runs
    *  its child under this Owner via `withOwner(#rootOwner, …)`, so
@@ -171,6 +177,8 @@ export class Renderer extends Emitter<RenderEvents> {
     this.frame = new Frame(this.terminal)
 
     if (opts.theme) this.#theme.set(opts.theme)
+    this.#defaultStyle = opts.defaultStyle
+    this.#updateDefaultStyle()
 
     this.ui = new UI(this)
     this.stream = new Stream(this, {
@@ -256,7 +264,10 @@ export class Renderer extends Emitter<RenderEvents> {
         // (the stored `#reserveBottom` hasn't changed), so we bypass it
         // and talk to `setScrollRegion` directly.
         this.terminal.clearScrollRegion()
-        this.terminal.write(`${this.terminal.moveTo(1, 1)}\x1b[2J`)
+        const defaults = this.frame.defaultStyle
+        this.terminal.write(
+          `${defaults ? RESET + defaults : ""}${this.terminal.moveTo(1, 1)}\x1b[2J${defaults ? RESET : ""}`
+        )
         if (this.terminal.reserveBottom > 0) {
           this.terminal.setScrollRegion(1, this.terminal.scrollBottom)
         }
@@ -333,6 +344,7 @@ export class Renderer extends Emitter<RenderEvents> {
    *  bump that already happens elsewhere on theme-driven invalidation. */
   set theme(theme: Theme) {
     this.#theme.set(theme)
+    this.#updateDefaultStyle()
     this.#ctxVersion++
     this.stream.invalidate()
     this.ui.invalidate()
@@ -343,6 +355,13 @@ export class Renderer extends Emitter<RenderEvents> {
   /** Get the current theme. (tracked) */
   get theme(): Theme {
     return this.#theme.get() ?? defaultTheme
+  }
+
+  #updateDefaultStyle(): void {
+    this.frame.setDefaultStyle(
+      openStyle({ fg: this.#defaultStyle?.fg }, this.theme),
+      openStyle({ bg: this.#defaultStyle?.bg }, this.theme)
+    )
   }
 
   start(): void {
