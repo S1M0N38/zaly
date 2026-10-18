@@ -77,9 +77,13 @@ const backends: Record<NonNullable<FindOptions["backend"]>, Finder> = {
     const cwd = normPath(opts.cwd)
     const paths = (opts.paths ?? []).map((p) => normPath(cwd, p))
     const exclude = [...defaultExcludes(opts.paths ?? []), ...(opts.exclude ?? [])]
+    const errors: string[] = []
     const globOpts: Partial<GlobOptions> = {
       ...opts,
       exclude,
+      onError: (path, error) => {
+        errors.push(`${path}: ${error.message}`)
+      },
       type: opts.type === "any" ? undefined : opts.type,
     }
     let count = 0
@@ -89,10 +93,20 @@ const backends: Record<NonNullable<FindOptions["backend"]>, Finder> = {
       const rel = relative(cwd, path)
       // oxlint-disable-next-line no-await-in-loop
       for await (const p of glob(normalizeGlobs(opts.pattern), { ...globOpts, cwd: path })) {
-        yield p.map((f) => (rel ? `${rel}/${f}` : f))
-        count += p.length
-        if (opts.limit && count >= opts.limit) return
+        const batch = opts.limit ? p.slice(0, opts.limit - count) : p
+        yield batch.map((f) => (rel ? `${rel}/${f}` : f))
+        count += batch.length
+        if (opts.limit && count >= opts.limit) break
       }
+      if (opts.limit && count >= opts.limit) break
+    }
+    if (errors.length) {
+      const stderr = errors.join("\n")
+      throw new FindError({
+        code: "FIND_FAILED",
+        data: { stderr },
+        message: `glob search incomplete: ${stderr.slice(0, 500)}`,
+      })
     }
   },
   async *rg(opts: FindOptions) {
@@ -153,9 +167,11 @@ async function* spawnFind(cmd: string, args: string[], opts: FindOptions): Async
         break
       }
 
-      yield batch
+      const paths = opts.limit ? batch.slice(0, opts.limit - count) : batch
+      count += paths.length
+      yield paths
 
-      if (opts.limit && ++count >= opts.limit) {
+      if (opts.limit && count >= opts.limit) {
         stoppedEarly = true
         proc.abort()
         break
@@ -166,11 +182,13 @@ async function* spawnFind(cmd: string, args: string[], opts: FindOptions): Async
       throw new FindError({ cause: error, code: "FIND_FAILED", message: String(error) })
     })
 
-    if (!stoppedEarly && result.code !== 0 && !(cmd === "rg" && result.code === 1)) {
+    const diagnostic = result.stderr.trim()
+    const failed = !stoppedEarly && result.code !== 0 && !(cmd === "rg" && result.code === 1)
+    if (failed || diagnostic) {
       throw new FindError({
         code: "FIND_FAILED",
-        data: { code: result.code, stderr: result.stderr },
-        message: `${cmd} failed (${result.code}): ${result.stderr.slice(0, 500)}`,
+        data: { code: result.code, stderr: diagnostic },
+        message: `${cmd} search incomplete: ${diagnostic.slice(0, 500) || `exited with code ${result.code}`}`,
       })
     }
   } finally {
@@ -205,7 +223,7 @@ function fdArgs(opts: FindOptions): string[] {
 
 function rgFilesArgs(opts: FindOptions): string[] {
   const globs = normalizeGlobs(opts.pattern)
-  const ret = ["--files", "--no-messages", "--color", "never"]
+  const ret = ["--files", "--color", "never"]
   if (opts.hidden) ret.push("--hidden")
   if (!opts.ignore) ret.push("--no-ignore")
   if (opts.follow) ret.push("--follow")

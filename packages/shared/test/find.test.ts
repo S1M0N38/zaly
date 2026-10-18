@@ -115,6 +115,40 @@ describe.each(backends)("find using $backend", ({ available, backend }) => {
     expect(await collect({ pattern: ["*", "*.test.ts"] })).toEqual(await collect())
   })
 
+  test.skipIf(!available)("limits files rather than batches", async () => {
+    expect(await collect({ limit: 1 })).toHaveLength(1)
+    expect(await collect({ limit: 3, paths: ["src", "packages"] })).toHaveLength(3)
+  })
+
+  test.skipIf(!available).each([false, true])(
+    "yields partial results before reporting a missing root (missing first: %s)",
+    async (missingFirst) => {
+      const files: string[] = []
+      const paths = missingFirst ? ["missing", "src"] : ["src", "missing"]
+      const search = async () => {
+        for await (const batch of find({ backend, cwd, paths, pattern: "*.ts" }))
+          files.push(...batch)
+      }
+      await expect(search()).rejects.toMatchObject({
+        code: "FIND_FAILED",
+        data: { stderr: expect.stringContaining("missing") },
+      })
+      expect(files.map((path) => relative(cwd, normPath(cwd, path)))).toEqual(["src/main.ts"])
+    }
+  )
+
+  test.skipIf(!available)("reports missing roots even when no files match", async () => {
+    await expect(
+      collect({ paths: ["src", "missing"], pattern: "*.missing" })
+    ).rejects.toMatchObject({
+      code: "FIND_FAILED",
+    })
+  })
+
+  test.skipIf(!available)("reports when every search root is missing", async () => {
+    await expect(collect({ paths: ["missing"] })).rejects.toMatchObject({ code: "FIND_FAILED" })
+  })
+
   test.skipIf(!available)("returns no matches without throwing", async () => {
     expect(await collect({ pattern: ["missing/**/*.ts", "*.missing"] })).toEqual([])
   })

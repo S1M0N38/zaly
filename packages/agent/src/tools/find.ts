@@ -2,7 +2,8 @@ import type { MetaPart, TextPart, ToolContext } from "@zaly/ai"
 
 import { AiError, defineTool } from "@zaly/ai"
 import { normPath } from "@zaly/shared"
-import { find } from "@zaly/shared/find"
+import { find, FindError } from "@zaly/shared/find"
+import { cleanTextTui } from "@zaly/shared/text"
 import { Type } from "typebox"
 import { truncate } from "../utils/truncate.ts"
 
@@ -69,19 +70,28 @@ export const findTool = defineTool({
   async call(args, ctx: ToolContext<FindToolMeta>): Promise<(MetaPart | TextPart)[]> {
     const cwd = normPath(ctx.cwd, ".")
 
-    let result: string[] = []
+    const limit = args.limit ?? DEFAULT_LIMIT
+    const result: string[] = []
+    let warning: FindError | undefined
     try {
-      const batch = await Array.fromAsync(
-        find({ ...args, cwd, pattern: args.glob, signal: ctx.signal })
-      )
-      result = batch.flat()
+      for await (const batch of find({
+        ...args,
+        cwd,
+        limit: limit + 1,
+        pattern: args.glob,
+        signal: ctx.signal,
+      })) {
+        result.push(...batch)
+      }
     } catch (error) {
-      throw AiError.from(error)
+      if (!(error instanceof FindError) || error.code !== "FIND_FAILED" || !result.length) {
+        throw AiError.from(error)
+      }
+      warning = error
     }
 
-    const limit = args.limit ?? DEFAULT_LIMIT
     const summary = truncate(result.join("\n"), {
-      maxLines: limit + 1,
+      maxLines: limit,
       strategy: "head",
     })
 
@@ -93,6 +103,17 @@ export const findTool = defineTool({
       truncated,
     }
 
-    return [{ text: summary.text || "No files found.", type: "text" }]
+    const parts: (MetaPart | TextPart)[] = []
+    if (warning) {
+      parts.push({ data: { error: warning.data, incomplete: true }, tag: "find", type: "meta" })
+    }
+    parts.push({ text: summary.text || "No files found.", type: "text" })
+    if (warning) {
+      parts.push({
+        text: `Warning: Search incomplete.\n${cleanTextTui(warning.message)}`,
+        type: "text",
+      })
+    }
+    return parts
   },
 })
