@@ -163,6 +163,7 @@ export class App {
         },
       },
       theme: await this.#ctx.theme(),
+      transparent: this.$.ui.transparent,
     })
 
     this.#renderer.selection.on("selection", async ({ text }) => {
@@ -296,6 +297,7 @@ export class App {
 
   async reload(): Promise<void> {
     await this.#ctx.loadConfig(true)
+    this.#renderer.transparent = this.$.ui.transparent
     this.#ctx.config.resources.refresh()
     await this.loadResources()
     this.#notifier.notify("Plugins & resources **reloaded**.")

@@ -15,6 +15,7 @@ import { Logger } from "@zaly/shared/logger"
 import { createCtx } from "../core/ctx.ts"
 import {
   createRoot,
+  effect,
   memo,
   peek,
   provideContext,
@@ -46,6 +47,7 @@ export interface RendererOptions {
   stdout?: TerminalWriter
   images?: Reactive<boolean>
   theme?: Theme
+  transparent?: Reactive<boolean>
   /** Base colors for painted rows and cleared cells, resolved against the theme. */
   defaultStyle?: Pick<Style, "fg" | "bg">
   /** Baseline footer height in rows — the size the footer occupies in
@@ -127,7 +129,7 @@ export class Renderer extends Emitter<RenderEvents> {
   readonly #stdin: TerminalReader & { setEncoding?: (enc: string) => void }
 
   #theme = signal<Theme | undefined>(undefined)
-  readonly #defaultStyle: RendererOptions["defaultStyle"]
+  readonly #transparent = signal<Reactive<boolean>>(false)
 
   /** Root Owner — every surface's function-shape `add` / `append` runs
    *  its child under this Owner via `withOwner(#rootOwner, …)`, so
@@ -177,8 +179,7 @@ export class Renderer extends Emitter<RenderEvents> {
     this.frame = new Frame(this.terminal)
 
     if (opts.theme) this.#theme.set(opts.theme)
-    this.#defaultStyle = opts.defaultStyle
-    this.#updateDefaultStyle()
+    this.#transparent.set(() => opts.transparent ?? false)
 
     this.ui = new UI(this)
     this.stream = new Stream(this, {
@@ -204,6 +205,16 @@ export class Renderer extends Emitter<RenderEvents> {
         queries: this.queries,
         style: memo(() => buildStyle(this.#theme.get())),
         theme: this.#theme.get,
+      })
+      effect(() => {
+        const theme = this.theme
+        const transparent = this.transparent
+        const previous = this.frame.defaultStyle
+        this.frame.setDefaultStyle(
+          openStyle({ fg: opts.defaultStyle?.fg }, theme),
+          openStyle({ bg: transparent ? undefined : opts.defaultStyle?.bg }, theme)
+        )
+        if (this.frame.defaultStyle !== previous) untrack(() => this.#schedule())
       })
       return useActiveOwner() as Owner
     })
@@ -344,7 +355,6 @@ export class Renderer extends Emitter<RenderEvents> {
    *  bump that already happens elsewhere on theme-driven invalidation. */
   set theme(theme: Theme) {
     this.#theme.set(theme)
-    this.#updateDefaultStyle()
     this.#ctxVersion++
     this.stream.invalidate()
     this.ui.invalidate()
@@ -357,11 +367,14 @@ export class Renderer extends Emitter<RenderEvents> {
     return this.#theme.get() ?? defaultTheme
   }
 
-  #updateDefaultStyle(): void {
-    this.frame.setDefaultStyle(
-      openStyle({ fg: this.#defaultStyle?.fg }, this.theme),
-      openStyle({ bg: this.#defaultStyle?.bg }, this.theme)
-    )
+  /** Inherit the terminal background instead of painting the base background. */
+  set transparent(transparent: boolean) {
+    this.#transparent.set(transparent)
+  }
+
+  /** Current transparency setting. (tracked) */
+  get transparent(): boolean {
+    return unwrap(this.#transparent.get())
   }
 
   start(): void {

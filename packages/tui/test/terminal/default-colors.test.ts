@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest"
+import { signal } from "../../src/core/reactive.ts"
 import { defaultTheme } from "../../src/themes/registry.ts"
 import { overlay } from "../../src/widgets/overlay.ts"
 import { text } from "../../src/widgets/text.ts"
@@ -87,6 +88,108 @@ describe("Renderer default colors", () => {
       expect(h.row(4)).toBe("same")
       expect(colors(h.term.getLine(4)![0])).toEqual({ bg: [34, 34, 34], fg: [221, 221, 221] })
       expect(colors(h.term.getLine(0)![19]).bg).toEqual([34, 34, 34])
+    } finally {
+      h.dispose()
+    }
+  })
+
+  test("toggles transparency without changing widget content or explicit backgrounds", async () => {
+    const transparent = signal(true)
+    const h = await makeHarness({ cols: 20, defaultStyle, rows: 5, transparent: transparent.get })
+    try {
+      h.renderer.stream.append(() => text("plain\n\x1b[48;2;17;34;51mX\x1b[49mY"))
+      await h.flush()
+      const terminalBg = colors(h.term.getLine(0)![19]).bg
+      const content = h.viewport()
+
+      transparent.set(false)
+      await h.flush()
+      expect(colors(h.term.getLine(0)![19]).bg).toEqual([240, 240, 240])
+      expect(colors(h.term.getLine(3)![0])).toEqual({ bg: [240, 240, 240], fg: [16, 16, 16] })
+      expect(colors(h.term.getLine(4)![0]).bg).toEqual([17, 34, 51])
+
+      transparent.set(true)
+      await h.flush()
+      expect(h.viewport()).toEqual(content)
+      expect(colors(h.term.getLine(0)![19]).bg).toEqual(terminalBg)
+      expect(colors(h.term.getLine(3)![0])).toEqual({ bg: terminalBg, fg: [16, 16, 16] })
+      expect(colors(h.term.getLine(4)![0]).bg).toEqual([17, 34, 51])
+      expect(colors(h.term.getLine(4)![1]).bg).toEqual(terminalBg)
+    } finally {
+      h.dispose()
+    }
+  })
+
+  test("applies plain config changes through the transparency setter", async () => {
+    const config = { transparent: true }
+    const h = await makeHarness({
+      cols: 20,
+      defaultStyle,
+      rows: 5,
+      transparent: config.transparent,
+    })
+    try {
+      h.renderer.stream.append(() => text("same"))
+      await h.flush()
+      const terminalBg = colors(h.term.getLine(4)![0]).bg
+
+      config.transparent = false
+      h.renderer.transparent = config.transparent
+      await h.flush()
+      expect(h.renderer.transparent).toBe(false)
+      expect(colors(h.term.getLine(4)![0])).toEqual({ bg: [240, 240, 240], fg: [16, 16, 16] })
+
+      config.transparent = true
+      h.renderer.transparent = config.transparent
+      await h.flush()
+      expect(h.renderer.transparent).toBe(true)
+      expect(h.row(4)).toBe("same")
+      expect(colors(h.term.getLine(4)![0])).toEqual({ bg: terminalBg, fg: [16, 16, 16] })
+      expect(colors(h.term.getLine(0)![19]).bg).toEqual(terminalBg)
+    } finally {
+      h.dispose()
+    }
+  })
+
+  test("setting transparency overrides an initial reactive source", async () => {
+    const transparent = signal(false)
+    const h = await makeHarness({ cols: 20, defaultStyle, rows: 5, transparent: transparent.get })
+    try {
+      h.renderer.stream.append(() => text("same"))
+      await h.flush()
+      h.renderer.transparent = true
+      await h.flush()
+      const terminalBg = colors(h.term.getLine(4)![0]).bg
+      transparent.set(true)
+      transparent.set(false)
+      await h.flush()
+      expect(h.renderer.transparent).toBe(true)
+      expect(colors(h.term.getLine(4)![0]).bg).toEqual(terminalBg)
+    } finally {
+      h.dispose()
+    }
+  })
+
+  test("uses the latest theme when transparency is disabled again", async () => {
+    const transparent = signal(true)
+    const h = await makeHarness({
+      cols: 20,
+      defaultStyle: { bg: "bg", fg: "fg" },
+      rows: 5,
+      theme: { ...defaultTheme, bg: "#f0f0f0", fg: "#101010" },
+      transparent: transparent.get,
+    })
+    try {
+      h.renderer.stream.append(() => text("same"))
+      await h.flush()
+      const terminalBg = colors(h.term.getLine(4)![0]).bg
+      h.renderer.theme = { ...defaultTheme, bg: "#222222", fg: "#dddddd" }
+      await h.flush()
+      expect(colors(h.term.getLine(4)![0])).toEqual({ bg: terminalBg, fg: [221, 221, 221] })
+      transparent.set(false)
+      await h.flush()
+      expect(h.row(4)).toBe("same")
+      expect(colors(h.term.getLine(4)![0])).toEqual({ bg: [34, 34, 34], fg: [221, 221, 221] })
     } finally {
       h.dispose()
     }
