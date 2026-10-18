@@ -75,14 +75,14 @@ describe("Renderer default colors", () => {
   test("repaints unchanged text and empty rows when theme defaults change", async () => {
     const h = await makeHarness({
       cols: 20,
-      defaultStyle: { bg: "ui", fg: "text" },
+      defaultStyle: { bg: "bg", fg: "fg" },
       rows: 5,
-      theme: { ...defaultTheme, text: "#101010", ui: { bg: "#f0f0f0" } },
+      theme: { ...defaultTheme, fg: "#101010", bg: "#f0f0f0" },
     })
     try {
       h.renderer.stream.append(() => text("same"))
       await h.flush()
-      h.renderer.theme = { ...defaultTheme, text: "#dddddd", ui: { bg: "#222222" } }
+      h.renderer.theme = { ...defaultTheme, fg: "#dddddd", bg: "#222222" }
       await h.flush()
       expect(h.row(4)).toBe("same")
       expect(colors(h.term.getLine(4)![0])).toEqual({ bg: [34, 34, 34], fg: [221, 221, 221] })
