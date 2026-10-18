@@ -1,4 +1,4 @@
-import type { Content } from "@zaly/ai"
+import type { Content, MetaPart, TextPart } from "@zaly/ai"
 
 import { justText } from "@zaly/ai"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
@@ -13,9 +13,13 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { force: true, recursive: true }))
 
-async function grep(args: Record<string, unknown>) {
+async function search(args: Record<string, unknown>) {
   const params = await grepTool.validator.validateParams({ paths: [dir], ...args })
-  return justText((await grepTool.call(params, {})) as Content)
+  return (await grepTool.call(params, {})) as (MetaPart | TextPart)[]
+}
+
+async function grep(args: Record<string, unknown>) {
+  return justText((await search(args)) as Content)
 }
 
 test("exposes only the six basic search parameters", () => {
@@ -62,6 +66,68 @@ test("returns surrounding context", async () => {
   const text = await grep({ context: 1, pattern: "needle" })
   expect(text).toContain("before")
   expect(text).toContain("after")
+})
+
+test.each([false, true])(
+  "preserves partial matches when a path is missing (missing first: %s)",
+  async (missingFirst) => {
+    const source = join(dir, "source.txt")
+    const missing = join(dir, "missing")
+    writeFileSync(source, "needle\n")
+    const parts = await search({
+      paths: missingFirst ? [missing, source] : [source, missing],
+      pattern: "needle",
+    })
+    const text = justText(parts as Content)
+    expect(text).toContain("needle")
+    expect(text).toContain("source.txt")
+    expect(text).toContain("Warning: Search incomplete")
+    expect(text).toContain(missing)
+    expect(parts.find((part) => part.type === "meta")).toMatchObject({
+      data: { code: 2, incomplete: true },
+      tag: "grep",
+    })
+  }
+)
+
+test("keeps partial-search warnings visible when matches are truncated", async () => {
+  const source = join(dir, "source.txt")
+  const missing = join(dir, "missing")
+  writeFileSync(source, "needle\n".repeat(10))
+  const parts = await search({ limit: 1, paths: [source, missing], pattern: "needle" })
+  const text = justText(parts as Content)
+  expect(text).toContain("needle")
+  expect(text).toContain("Warning: Search incomplete")
+  expect(text).toContain(missing)
+  expect(parts.find((part) => part.type === "meta")).toMatchObject({
+    data: { code: 2, incomplete: true, truncated: true },
+  })
+})
+
+test("fails when every search path is missing", async () => {
+  await expect(grep({ paths: [join(dir, "missing")], pattern: "needle" })).rejects.toMatchObject({
+    code: "GREP_FAILED",
+    data: { code: 2 },
+  })
+})
+
+test("does not report no matches when a search path failed", async () => {
+  const source = join(dir, "source.txt")
+  writeFileSync(source, "unrelated\n")
+  await expect(
+    grep({ paths: [source, join(dir, "missing")], pattern: "needle" })
+  ).rejects.toMatchObject({
+    code: "GREP_FAILED",
+    data: { code: 2 },
+  })
+})
+
+test("rejects invalid regular expressions", async () => {
+  writeFileSync(join(dir, "source.txt"), "needle\n")
+  await expect(grep({ pattern: "[" })).rejects.toMatchObject({
+    code: "GREP_FAILED",
+    data: { code: 2 },
+  })
 })
 
 test("reports an empty search without failing", async () => {

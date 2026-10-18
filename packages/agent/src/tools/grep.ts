@@ -97,16 +97,18 @@ export const grepTool = defineTool({
       throw new AiError({ cause: error, code: "GREP_FAILED", message: String(error) })
     })
 
-    // rg/grep: 0 matches found, 1 no matches, >1 error.
-    if (result.code > 1 && result.killReason !== "maxBuffer") {
+    const text = cleanTextTui(result.stdout)
+    const stderr = cleanTextTui(result.stderr).trim()
+    // rg/grep can report matches and still exit with an error for another search path.
+    const failed = result.code > 1 && result.killReason !== "maxBuffer"
+    if (failed && !text.trim()) {
       throw new AiError({
         code: "GREP_FAILED",
-        data: { code: result.code, stderr: result.stderr },
-        message: `${command.cmd} failed (${result.code}): ${result.stderr.slice(0, 500)}`,
+        data: { code: result.code, stderr },
+        message: `${command.cmd} failed (${result.code}): ${stderr.slice(0, 500)}`,
       })
     }
 
-    const text = cleanTextTui(result.stdout)
     const limit = args.limit ?? DEFAULT_LIMIT
     const summary = truncate(text, {
       maxLineChars: command.kind === "rg" ? 500 : MAX_COLUMNS,
@@ -124,11 +126,12 @@ export const grepTool = defineTool({
 
     const parts: (MetaPart | TextPart)[] = []
 
-    const stderr = result.stderr.trim()
-    if (stderr || result.killReason) {
+    if (stderr || result.killReason || failed) {
       const meta: Record<string, unknown> = {
+        code: result.code,
         command: command.cmd,
         cwd,
+        incomplete: failed || !!result.killReason,
         truncated,
       }
       if (result.killReason) meta.killReason = result.killReason
@@ -136,6 +139,10 @@ export const grepTool = defineTool({
       parts.push({ data: meta, tag: "grep", type: "meta" })
     }
     parts.push({ text: summary.text || "No matches found.", type: "text" })
+    if (failed) {
+      const warning = `Warning: Search incomplete (${command.kind} exited with code ${result.code}).`
+      parts.push({ text: stderr ? `${warning}\n${stderr.slice(0, 500)}` : warning, type: "text" })
+    }
     return parts
   },
 })
