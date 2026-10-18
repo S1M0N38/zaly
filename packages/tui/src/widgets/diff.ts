@@ -262,7 +262,8 @@ function renderRows(
   for (const r of rows) {
     const origStr = r.type === "add" ? "" : String(r.origNum)
     const newStr = r.type === "remove" ? "" : String(r.newNum)
-    const gutterStyle = s.bg(`${styles[r.type]}+10`)
+
+    const gutterStyle = s[`${styles[r.type]}Num`] ?? ((x: string) => x)
     const gutter = gutterStyle(` ${pad(origStr, numWidth)}  ${pad(newStr, numWidth)} `)
 
     const prefix = r.type === "add" ? " + " : r.type === "remove" ? " - " : "   "

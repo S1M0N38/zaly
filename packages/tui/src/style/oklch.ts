@@ -35,7 +35,7 @@ function linearToSrgb(c: number): number {
   return c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055
 }
 
-export function hexToOklch(hex: string): OKLCH {
+export function hexToOklch(hex: HexColor): OKLCH {
   const [r8, g8, b8] = parseHex(hex)
   const r = srgbToLinear(r8 / 255)
   const g = srgbToLinear(g8 / 255)
@@ -116,4 +116,9 @@ export function shiftLightness(hex: HexColor, delta: number): HexColor {
   const C = okl.C * Math.min(1, margin / 0.1)
   cache.set(key, (ret = oklchToHex({ ...okl, C, L })))
   return ret
+}
+
+export function isDark(hex: HexColor): boolean {
+  const oklch = hexToOklch(hex)
+  return oklch.L < 0.6
 }

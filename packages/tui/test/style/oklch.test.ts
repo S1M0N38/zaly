@@ -1,3 +1,5 @@
+import type { HexColor } from "../../src/index.ts"
+
 import { describe, expect, test } from "vitest"
 import { hexToOklch, oklchToHex } from "../../src/style/oklch.ts"
 
@@ -27,7 +29,7 @@ describe("hexToOklch / oklchToHex roundtrip", () => {
       "#ffffff",
       "#000000",
       "#808080",
-    ]
+    ] as const
     for (const hex of samples) {
       const back = oklchToHex(hexToOklch(hex))
       closeHex(hex, back)
@@ -35,14 +37,14 @@ describe("hexToOklch / oklchToHex roundtrip", () => {
   })
 
   test("achromatic greys have C ~ 0", () => {
-    for (const hex of ["#000000", "#808080", "#ffffff"]) {
+    for (const hex of ["#000000", "#808080", "#ffffff"] as const) {
       const { C } = hexToOklch(hex)
       expect(C).toBeLessThan(0.01)
     }
   })
 
   test("throws on invalid hex", () => {
-    expect(() => hexToOklch("not-hex")).toThrow(/invalid hex/)
+    expect(() => hexToOklch("not-hex" as HexColor)).toThrow(/invalid hex/)
     expect(() => hexToOklch("#xyz")).toThrow(/invalid hex/)
   })
 

@@ -10,6 +10,8 @@ import type { Theme } from "./types.ts"
  */
 // oxlint-disable-next-line sort-keys
 export const defaults: Omit<Theme, "id"> = {
+  mode: "dark",
+
   // base colors
   primary: "blue",
   accent: "brightMagenta",
@@ -32,9 +34,9 @@ export const defaults: Omit<Theme, "id"> = {
   // ui primitives
   divider: "bg-5",
   selection: { bg: "brightBlue", fg: "black" },
-  gutter: "bg-5",
+  gutter: "divider",
   prompt: "inherit",
-  border: "black",
+  border: "divider",
   borderTitle: "title",
 
   // code
@@ -88,10 +90,26 @@ export const defaults: Omit<Theme, "id"> = {
 
   // diff
   diffAdd: { bg: "success-50", fg: "success" },
-  diffContext: "highlight",
   diffDel: { bg: "error-50", fg: "error" },
-  diffLine: "gutter",
-  diffTitle: "title",
+  diffContext: { bg: "code" },
+  diffAddNum: { bg: "diffAdd+10" },
+  diffDelNum: { bg: "diffDel+10" },
+  diffContextNum: { bg: "diffContext+10" },
+}
+
+export const defaultsDark: Omit<Theme, "id"> = defaults
+
+// oxlint-disable-next-line sort-keys
+export const defaultsLight: Omit<Theme, "id"> = {
+  ...defaults,
+  mode: "light",
+  ui: { bg: "bg-3" },
+  highlight: { bg: "bg-3" },
+  divider: "fg-5",
+  code: { bg: "bg-2" },
+  diffAddNum: { bg: "diffAdd-10" },
+  diffDelNum: { bg: "diffDel-10" },
+  diffContextNum: { bg: "diffContext-10" },
 }
 
 // oxlint-disable-next-line sort-keys

@@ -31,7 +31,7 @@ export class ActionsComposer implements ComposerPlugin {
     const args = actionMatch[3] || ""
     value = await codeToAnsi(`${cmd} ${args}`, "bash", { theme: s.theme.shiki })
     value = s.primary(cmd) + sliceAnsi(value, cmd.length)
-    return `${s.divider(actionMatch[1])}${value}`
+    return `${s.delim(actionMatch[1])}${value}`
   }
 
   validate(value: string, ctx: ComposerCtx): true | string {

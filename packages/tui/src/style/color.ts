@@ -11,7 +11,7 @@ export function toHex(x: number | RGB, y?: number, z?: number): HexColor {
   return `#${hexByte(r)}${hexByte(g)}${hexByte(b)}`
 }
 
-export function parseHex(hex: string): RGB {
+export function parseHex(hex: HexColor): RGB {
   let s = hex.charCodeAt(0) === 0x23 ? hex.slice(1) : hex // strip leading #
   if (s.length === 4) s = s.slice(0, 3) // strip alpha
   if (s.length === 8) s = s.slice(0, 6) // strip alpha

@@ -27,6 +27,7 @@ export type ThemeValue = Color | Style
  */
 export type Theme = {
   id: string
+  mode: "dark" | "light"
   name?: string
   /** Optional name of a matching Shiki syntax-highlighting theme. Code
    *  blocks and fenced markdown snippets look this up so highlighting
@@ -144,10 +145,10 @@ export type Theme = {
   optionActive: ThemeValue
 
   // ── diff ─────────────────────────────────────────────────────────────
-
   diffAdd: ThemeValue
-  diffContext: ThemeValue
   diffDel: ThemeValue
-  diffLine: ThemeValue
-  diffTitle: ThemeValue
+  diffContext: ThemeValue
+  diffAddNum: ThemeValue
+  diffDelNum: ThemeValue
+  diffContextNum: ThemeValue
 }

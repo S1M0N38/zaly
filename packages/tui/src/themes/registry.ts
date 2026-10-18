@@ -5,8 +5,10 @@ import { createRegistry } from "@zaly/shared/registry"
 import { readFileSync } from "node:fs"
 import { basename } from "pathe"
 import moonJson from "../../assets/themes/tokyonight-moon.json" with { type: "json" }
+import { isHexColor } from "../style/color.ts"
+import { isDark } from "../style/oklch.ts"
 import { builtin } from "./builtin.ts"
-import { defaults, ansi } from "./default.ts"
+import { ansi, defaultsDark, defaultsLight } from "./default.ts"
 
 /** Built-in theme names plus the synthetic `"ansi"` palette (no JSON
  *  — falls back to `defaults` only). */
@@ -54,7 +56,16 @@ export async function loadTheme(o?: string | { name?: string; path?: string }): 
  */
 function resolveTheme(theme: unknown, id: string): Theme {
   const { $schema: _, ...rest } = theme as Partial<Theme> & { $schema?: unknown }
-  return { ...defaults, id, name: id, ...rest }
+
+  let mode: "dark" | "light" | undefined = rest.mode
+  if (!mode && rest.bg && isHexColor(rest.bg)) mode = isDark(rest.bg) ? "dark" : "light"
+  mode ??= "dark"
+  return {
+    ...(mode === "dark" ? defaultsDark : defaultsLight),
+    id,
+    name: id,
+    ...rest,
+  }
 }
 
 /**

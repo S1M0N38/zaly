@@ -181,7 +181,6 @@ function toTui(id: ShikiTheme, theme: ThemeRegistrationResolved): Partial<Theme>
       t.color("diffEditor.removedTextBackground", "diffEditor.removedLineBackground"),
       t.fg("markup.deleted.diff")
     ),
-    diffTitle: t.style("meta.diff.header.from-file", "meta.diff.header.to-file"),
 
     // ── code annotations (scope rules) ─────────────────────────────────
     comment: t.style("comment"),
