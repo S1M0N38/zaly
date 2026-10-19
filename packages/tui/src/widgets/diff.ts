@@ -10,7 +10,7 @@ import { basename, extname } from "pathe"
 import { Node } from "../core/node.ts"
 import { createAsync, memo, unwrap, useContext } from "../core/reactive.ts"
 import { RenderContext } from "../core/render.ts"
-import { calcLayout, countLines } from "../layout/text.ts"
+import { calcLayout } from "../layout/text.ts"
 import { codeToAnsi } from "../shiki/shiki.ts"
 
 export interface DiffState {
@@ -32,10 +32,14 @@ export interface DiffState {
   wrap?: WrapMode
 }
 
+const NO_NEWLINE = String.raw`\ No newline at end of file`
+
+type DiffLine = { text: string; terminated: boolean }
+
 type DiffOpts = {
-  original: string[]
+  original: DiffLine[]
   originalHi: string[]
-  modified: string[]
+  modified: DiffLine[]
   modifiedHi: string[]
   context: number
   ctx: RenderCtx
@@ -100,13 +104,15 @@ export class Diff extends Node<DiffState> {
     const layout = this.layout()
     const width = Math.min(ctx.width, layout.width)
 
+    const original = splitLines(input.original)
+    const modified = splitLines(input.modified)
     const opts: DiffOpts = {
       context: this.state.context ?? 3,
       ctx: { ...ctx, width },
-      modified: input.modified.split("\n"),
-      modifiedHi: highlighted.modified.split("\n"),
-      original: input.original.split("\n"),
-      originalHi: highlighted.original.split("\n"),
+      modified,
+      modifiedHi: splitAnsi(highlighted.modified).slice(0, modified.length),
+      original,
+      originalHi: splitAnsi(highlighted.original).slice(0, original.length),
     }
 
     this.state.wrap ??= "word"
@@ -119,13 +125,16 @@ export class Diff extends Node<DiffState> {
     const modified = calcLayout(input.modified, { wrap: this.state.wrap })
     const numWidth = Math.max(
       1,
-      countLines(unwrap(this.state.original)),
-      countLines(unwrap(this.state.modified))
+      splitLines(input.original).length,
+      splitLines(input.modified).length
     ).toString().length
+    const markerWidth = [input.original, input.modified].some((s) => s !== "" && !s.endsWith("\n"))
+      ? stringWidth(NO_NEWLINE)
+      : 0
     const padding = numWidth * 2 + 4 + 4
     return {
       minWidth: Math.max(original.minWidth, modified.minWidth) + padding,
-      width: Math.max(original.width, modified.width) + padding,
+      width: Math.max(original.width, modified.width, markerWidth) + padding,
     }
   }
 }
@@ -147,10 +156,19 @@ export function diff(state: State<DiffState>): Diff {
 
 // ---------- internals ----------
 
-type DiffRow =
+function splitLines(text: string): DiffLine[] {
+  if (text === "") return []
+  const terminated = text.endsWith("\n")
+  const lines = text.split("\n")
+  if (terminated) lines.pop()
+  return lines.map((line, i) => ({ terminated: i < lines.length - 1 || terminated, text: line }))
+}
+
+type DiffRow = { terminated: boolean } & (
   | { type: "context"; origNum: number; newNum: number; content: string }
   | { type: "remove"; origNum: number; content: string }
   | { type: "add"; newNum: number; content: string }
+)
 
 async function buildDiffRows(opts: DiffOpts): Promise<string[]> {
   const context = opts.context
@@ -158,7 +176,9 @@ async function buildDiffRows(opts: DiffOpts): Promise<string[]> {
   // in the library, and it lands at first render rather than at module
   // load.
   const { diffArrays } = await import("diff")
-  const segments = diffArrays(opts.original, opts.modified)
+  const segments = diffArrays(opts.original, opts.modified, {
+    comparator: (a, b) => a.text === b.text && a.terminated === b.terminated,
+  })
   const {
     original: origLines,
     modified: modLines,
@@ -212,18 +232,21 @@ async function buildDiffRows(opts: DiffOpts): Promise<string[]> {
           content: modHi[a.modIdx!] ?? origHi[a.origIdx!] ?? "",
           newNum: a.modIdx! + 1,
           origNum: a.origIdx! + 1,
+          terminated: modLines[a.modIdx!].terminated,
           type: "context",
         })
       } else if (a.kind === "remove") {
         rows.push({
           content: origHi[a.origIdx!] ?? "",
           origNum: a.origIdx! + 1,
+          terminated: origLines[a.origIdx!].terminated,
           type: "remove",
         })
       } else {
         rows.push({
           content: modHi[a.modIdx!] ?? "",
           newNum: a.modIdx! + 1,
+          terminated: modLines[a.modIdx!].terminated,
           type: "add",
         })
       }
@@ -284,6 +307,10 @@ function renderRows(
       const bodyLine = (i === 0 ? prefix : "   ") + wline + " ".repeat(pw)
       const styledBody = rowStyle?.(bodyLine) ?? bodyLine
       out.push((i === 0 ? gutter : gutterStyle(blankGutter)) + styledBody)
+    }
+    if (!r.terminated) {
+      const marker = wrapAnsi(NO_NEWLINE, Math.max(1, contentWidth), { mode: "word" })
+      for (const line of splitAnsi(marker)) out.push(" ".repeat(gutterWidth) + s.dim(line))
     }
   }
   return out

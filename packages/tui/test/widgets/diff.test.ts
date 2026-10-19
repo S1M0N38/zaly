@@ -1,5 +1,6 @@
 import type { RenderCtx } from "../../src/core/ctx.ts"
 
+import { stringWidth } from "@zaly/shared/ansi"
 import { describe, expect, test } from "vitest"
 import { createCtx } from "../../src/core/ctx.ts"
 import { defaultTheme as theme } from "../../src/themes/registry.ts"
@@ -12,7 +13,98 @@ const stripAnsi = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, "")
 const simplify = (rows: readonly string[]): string[] =>
   rows.map((r) => stripAnsi(r).replace(/ +$/, ""))
 
+const files = [
+  { name: "empty file", text: "", lines: [], terminated: false },
+  { name: "unterminated line", text: "a", lines: ["a"], terminated: false },
+  { name: "terminated line", text: "a\n", lines: ["a"], terminated: true },
+  { name: "single empty line", text: "\n", lines: [""], terminated: true },
+  { name: "trailing empty line", text: "a\n\n", lines: ["a", ""], terminated: true },
+  {
+    name: "internal empty lines",
+    text: "a\n\nb\n\nc\n",
+    lines: ["a", "", "b", "", "c"],
+    terminated: true,
+  },
+  { name: "three terminated lines", text: "a\nb\nc\n", lines: ["a", "b", "c"], terminated: true },
+  { name: "CRLF lines", text: "a\r\nb\r\n", lines: ["a", "b"], terminated: true },
+]
+const marker = String.raw`      \ No newline at end of file`
+
 describe("Diff widget", () => {
+  test.each(files)(
+    "creation of $name preserves actual lines",
+    async ({ text, lines, terminated }) => {
+      const n = diff({ original: "", modified: text })
+      const expected = lines.map((line, i) => `    ${i + 1}  + ${line}`.trimEnd())
+      if (lines.length && !terminated) expected.push(marker)
+      expect(simplify(await n.render(ctx))).toEqual(expected)
+    }
+  )
+
+  test.each(files)(
+    "deletion of $name preserves actual lines",
+    async ({ text, lines, terminated }) => {
+      const n = diff({ original: text, modified: "" })
+      const expected = lines.map((line, i) => ` ${i + 1}     - ${line}`.trimEnd())
+      if (lines.length && !terminated) expected.push(marker)
+      expect(simplify(await n.render(ctx))).toEqual(expected)
+    }
+  )
+
+  test("adding a final newline is a replacement, not an extra blank line", async () => {
+    const n = diff({ original: "a", modified: "a\n" })
+    expect(simplify(await n.render(ctx))).toEqual([" 1     - a", marker, "    1  + a"])
+  })
+
+  test("removing a final newline annotates only the added unterminated line", async () => {
+    const n = diff({ original: "a\n", modified: "a" })
+    expect(simplify(await n.render(ctx))).toEqual([" 1     - a", "    1  + a", marker])
+  })
+
+  test("replacing unterminated lines annotates both sides", async () => {
+    const n = diff({ original: "a", modified: "b" })
+    expect(simplify(await n.render(ctx))).toEqual([" 1     - a", marker, "    1  + b", marker])
+  })
+
+  test("an additional final newline adds one real empty line", async () => {
+    const n = diff({ original: "a\n", modified: "a\n\n" })
+    expect(simplify(await n.render(ctx))).toEqual([" 1  1    a", "    2  +"])
+  })
+
+  test("annotates an unterminated context line only once", async () => {
+    const n = diff({ original: "a\nlast", modified: "b\nlast" })
+    expect(simplify(await n.render(ctx))).toEqual([
+      " 1     - a",
+      "    1  + b",
+      " 2  2    last",
+      marker,
+    ])
+  })
+
+  test("omits the EOF annotation when the final line is outside the hunk", async () => {
+    const n = diff({ context: 0, original: "a\nb\nlast", modified: "A\nb\nlast" })
+    expect(simplify(await n.render(ctx))).toEqual([" 1     - a", "    1  + A"])
+  })
+
+  test("wraps EOF annotations without overflowing the available width", async () => {
+    const n = diff({ original: "", modified: "a" })
+    const rows = await n.render(createCtx({ theme, width: 20 }))
+    expect(rows.every((row) => stringWidth(row) <= 20)).toBe(true)
+    expect(
+      simplify(rows)
+        .slice(1)
+        .map((row) => row.trim())
+        .join(" ")
+    ).toBe(String.raw`\ No newline at end of file`)
+  })
+
+  test("gutter layout uses actual line counts at a digit boundary", async () => {
+    const text = "a\n".repeat(9)
+    const n = diff({ original: "", modified: text })
+    expect(n.layout().width).toBe(11)
+    expect(simplify(await n.render(ctx))).toHaveLength(9)
+  })
+
   test("single-line replacement shows one -/+ pair with context", async () => {
     const n = diff({
       context: 1,
@@ -91,11 +183,9 @@ describe("Diff widget", () => {
     expect(rows.some((r) => r.includes("\x1b["))).toBe(true)
   })
 
-  test("identical original/modified produces no diff rows (still emits title)", async () => {
+  test("identical unterminated original/modified produces no rows or annotations", async () => {
     const n = diff({ context: 3, modified: "a\nb\nc", original: "a\nb\nc" })
     const rows = simplify(await n.render(ctx))
-    // Title row is the only output; no add/remove/context rows since
-    // there's no diff.
-    expect(rows.filter((r) => r.includes("-") || r.includes("+"))).toHaveLength(0)
+    expect(rows).toEqual([])
   })
 })
